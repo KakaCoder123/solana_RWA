@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <!-- Outer double ring -->
+  <circle cx="100" cy="100" r="92" stroke="#6b21a8" stroke-width="4"/>
+  <circle cx="100" cy="100" r="80" stroke="#7c3aed" stroke-width="2.5" stroke-dasharray="4 3"/>
+
+  <!-- V/W network shape -->
+  <!-- Left top node -->
+  <circle cx="48" cy="62" r="7" fill="#7c3aed"/>
+  <!-- Right top node -->
+  <circle cx="152" cy="62" r="7" fill="#7c3aed"/>
+  <!-- Center bottom node -->
+  <circle cx="100" cy="148" r="7" fill="#6b21a8"/>
+  <!-- Left mid node -->
+  <circle cx="72" cy="108" r="5.5" fill="#9333ea"/>
+  <!-- Right mid node -->
+  <circle cx="128" cy="108" r="5.5" fill="#9333ea"/>
+
+  <!-- Network lines (V/W shape) -->
+  <polyline points="48,62 72,108 100,148 128,108 152,62" stroke="#7c3aed" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Cross connection -->
+  <line x1="72" y1="108" x2="128" y2="108" stroke="#6b21a8" stroke-width="2" stroke-dasharray="3 3"/>
+
+  <!-- Arrow / lightning bolt (top right) -->
+  <path d="M130 38 L168 38 L168 76" stroke="#6b21a8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="130" y1="38" x2="168" y2="76" stroke="#7c3aed" stroke-width="4" stroke-linecap="round"/>
+  <!-- Arrow head -->
+  <polyline points="152,76 168,76 168,60" stroke="#9333ea" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>
