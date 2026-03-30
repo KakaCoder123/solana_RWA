@@ -50,7 +50,7 @@ export default function LandingPage() {
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
-    if (connected && mounted) router.push('/investor')
+    if (connected && mounted) router.push('/profile')
   }, [connected, mounted, router])
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
