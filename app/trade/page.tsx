@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useCallback } from 'react'
 import NavBar from '@/components/NavBar'
 import { useSale } from '@/hooks/useSale'
-import { VEND_MINT } from '@/lib/anchor'
+import { VEND_MINT, SALE_PRICE_LAMPORTS, VEND_LAMPORTS } from '@/lib/anchor'
 import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 
 // ── Types ──────────────────────────────────────────────────────
@@ -112,7 +112,9 @@ export default function TradePage() {
   const [buying,  setBuying]  = useState(false)
   const [selling, setSelling] = useState(false)
 
-  const price       = pool?.pricePerVend ?? 0.001
+  // Fallback: use on-chain constant so price is always correct even before pool loads
+  const FALLBACK_PRICE = (SALE_PRICE_LAMPORTS * VEND_LAMPORTS) / 1e9
+  const price       = pool?.pricePerVend ?? FALLBACK_PRICE
   const solAmtNum   = parseFloat(solAmt) || 0
   const vendReceive = solAmtNum > 0 ? (solAmtNum / price).toFixed(2) : '0.00'
   const solReceive  = parseFloat(vendSell) > 0 ? (parseFloat(vendSell) * price).toFixed(4) : '0.0000'

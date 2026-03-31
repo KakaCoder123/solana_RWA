@@ -6,7 +6,7 @@ import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 import IDL from '../lib/idl/vend_sale.json'
-import { SALE_PROGRAM_ID, VEND_MINT, VEND_LAMPORTS } from '../lib/anchor'
+import { SALE_PROGRAM_ID, VEND_MINT, VEND_LAMPORTS, SALE_TREASURY, SALE_PRICE_LAMPORTS } from '../lib/anchor'
 
 export interface SalePoolData {
   pricePerVend:    number    // SOL за 1 VEND
@@ -76,8 +76,10 @@ export function useSale() {
       const provider = new AnchorProvider(connection, dummyWallet as any, { commitment: 'confirmed' })
       const program = new Program(IDL as any, provider)
 
-      const data = await (program.account as any).salePool.fetch(getSalePoolPda())
-      const vaultLamports = await connection.getBalance(getSaleVaultPda())
+      const [data, vaultLamports] = await Promise.all([
+        (program.account as any).salePool.fetch(getSalePoolPda()),
+        connection.getBalance(getSaleVaultPda()),
+      ])
 
       setPool({
         pricePerVend:    (data.priceLamports.toNumber() * VEND_LAMPORTS) / LAMPORTS_PER_SOL,
@@ -87,8 +89,16 @@ export function useSale() {
         isActive:        data.isActive,
         treasury:        data.treasury,
       })
-    } catch (e: any) {
-      setError(e.message)
+    } catch {
+      // RPC failed — set pool with known constants so UI still works
+      setPool(prev => prev ?? {
+        pricePerVend:    (SALE_PRICE_LAMPORTS * VEND_LAMPORTS) / LAMPORTS_PER_SOL,
+        totalSold:       0,
+        totalBoughtBack: 0,
+        vaultBalance:    0,
+        isActive:        true,
+        treasury:        SALE_TREASURY,
+      })
     }
   }, [connection])
 
@@ -169,7 +179,7 @@ export function useSale() {
   }, [fetchPool, fetchHistory])
 
   // Купить VEND токены
-  const buyTokens = useCallback(async (amountVend: number) => {
+  const buyTokens = useCallback(async (amountRaw: number) => {
     if (!publicKey) throw new Error('Wallet not connected')
     const program = getProgram()
     if (!program) throw new Error('Program not ready')
@@ -177,9 +187,10 @@ export function useSale() {
     setLoading(true)
     setError(null)
     try {
-      const rawAmount = new BN(Math.floor(amountVend * VEND_LAMPORTS))
+      const rawAmount = new BN(Math.floor(amountRaw * VEND_LAMPORTS))
       const buyerAta  = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
-      const poolData  = await (program.account as any).salePool.fetch(getSalePoolPda())
+      // Use cached pool treasury if available, else fall back to known constant
+      const treasury  = pool?.treasury ?? SALE_TREASURY
 
       await (program.methods as any)
         .buyTokens(rawAmount)
@@ -187,7 +198,7 @@ export function useSale() {
           buyer:    publicKey,
           vendMint: VEND_MINT,
           buyerAta: buyerAta,
-          treasury: poolData.treasury,
+          treasury,
         })
         .rpc()
 
@@ -198,7 +209,7 @@ export function useSale() {
     } finally {
       setLoading(false)
     }
-  }, [publicKey, getProgram, fetchPool, fetchHistory])
+  }, [publicKey, pool, getProgram, fetchPool, fetchHistory])
 
   // Продать VEND токены
   const sellTokens = useCallback(async (amountVend: number) => {
