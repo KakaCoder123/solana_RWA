@@ -1,13 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { useWallet, useConnection } from '@solana/wallet-adapter-react'
+import { useWallet } from '@solana/wallet-adapter-react'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState } from 'react'
 import NavBar from '@/components/NavBar'
 import { useSale } from '@/hooks/useSale'
+import { useWalletData } from '@/hooks/useWalletData'
 import { VEND_MINT, SALE_PRICE_LAMPORTS, VEND_LAMPORTS } from '@/lib/anchor'
-import { LAMPORTS_PER_SOL } from '@solana/web3.js'
 
 // ── Types ──────────────────────────────────────────────────────
 type OrderSide = 'sell' | 'buy'
@@ -90,18 +90,16 @@ function Toast({ msg, ok, onClose }: { msg: string; ok: boolean; onClose: () => 
 
 // ── Page ───────────────────────────────────────────────────────
 export default function TradePage() {
-  const { connected, connecting, publicKey } = useWallet()
-  const { connection } = useConnection()
+  const { connected, connecting } = useWallet()
   const router = useRouter()
   const { pool, history, loading: saleLoading, buyTokens, sellTokens } = useSale()
+  const { assets, refresh: refreshBalances } = useWalletData(VEND_MINT)
 
-  const [mounted, setMounted]     = useState(false)
-  const [period, setPeriod]       = useState<'1D' | '1W' | '1M'>('1D')
-  const [solAmt, setSolAmt]       = useState('1.5')
-  const [vendSell, setVendSell]   = useState('')
-  const [solBalance, setSolBal]   = useState<number | null>(null)
-  const [vendBalance, setVendBal] = useState<number | null>(null)
-  const [orders, setOrders]       = useState<Order[]>([
+  const [mounted, setMounted] = useState(false)
+  const [period, setPeriod]   = useState<'1D' | '1W' | '1M'>('1D')
+  const [solAmt, setSolAmt]   = useState('1.5')
+  const [vendSell, setVendSell] = useState('')
+  const [orders, setOrders]   = useState<Order[]>([
     { price: '0.02422', amount: '4,192.5', time: '12:40:55', side: 'sell' },
     { price: '0.02421', amount: '820.0',   time: '12:40:51', side: 'sell' },
     { price: '0.02419', amount: '1,240.0', time: '12:41:02', side: 'buy'  },
@@ -112,7 +110,9 @@ export default function TradePage() {
   const [buying,  setBuying]  = useState(false)
   const [selling, setSelling] = useState(false)
 
-  // Fallback: use on-chain constant so price is always correct even before pool loads
+  const solBalance  = assets.solBalance
+  const vendBalance = assets.vendBalance
+
   const FALLBACK_PRICE = (SALE_PRICE_LAMPORTS * VEND_LAMPORTS) / 1e9
   const price       = pool?.pricePerVend ?? FALLBACK_PRICE
   const solAmtNum   = parseFloat(solAmt) || 0
@@ -121,24 +121,6 @@ export default function TradePage() {
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => { if (mounted && !connecting && !connected) router.push('/') }, [mounted, connecting, connected, router])
-
-  const fetchBalances = useCallback(async () => {
-    if (!publicKey) return
-    try {
-      const sol = await connection.getBalance(publicKey)
-      setSolBal(sol / LAMPORTS_PER_SOL)
-    } catch { /* ignore */ }
-    try {
-      const accounts = await connection.getParsedTokenAccountsByOwner(
-        publicKey, { mint: VEND_MINT }
-      )
-      const amount = accounts.value[0]
-        ?.account.data.parsed.info.tokenAmount.uiAmount ?? 0
-      setVendBal(amount)
-    } catch { setVendBal(0) }
-  }, [publicKey, connection])
-
-  useEffect(() => { if (mounted) fetchBalances() }, [mounted, fetchBalances])
 
   // Live mock order flow
   useEffect(() => {
@@ -168,7 +150,7 @@ export default function TradePage() {
       const sig = await buyTokens(vendAmt)
       // Give RPC 2s to index the new token account before querying balance
       await new Promise(r => setTimeout(r, 2000))
-      await fetchBalances()
+      await refreshBalances()
       showToast(`✓ Bought ${vendReceive} VEND — tx: ${sig.slice(0, 8)}...`, true)
       setSolAmt('')
     } catch (e: any) {
@@ -183,7 +165,7 @@ export default function TradePage() {
     try {
       const sig = await sellTokens(amt)
       await new Promise(r => setTimeout(r, 2000))
-      await fetchBalances()
+      await refreshBalances()
       showToast(`✓ Sold ${vendSell} VEND — tx: ${sig.slice(0, 8)}...`, true)
       setVendSell('')
     } catch (e: any) {
