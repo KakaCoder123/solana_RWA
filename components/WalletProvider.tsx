@@ -7,11 +7,12 @@ import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets'
 import { BackpackWalletAdapter } from '@solana/wallet-adapter-backpack'
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare'
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui'
-import { clusterApiUrl, ConnectionConfig } from '@solana/web3.js'
+import { ConnectionConfig } from '@solana/web3.js'
 
 import '@solana/wallet-adapter-react-ui/styles.css'
 
-const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? clusterApiUrl(WalletAdapterNetwork.Devnet)
+// Ankr free devnet — no API key needed, much less rate-limited than public endpoint
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL ?? 'https://rpc.ankr.com/solana_devnet'
 const CONNECTION_CONFIG: ConnectionConfig = {
   commitment: 'confirmed',
   confirmTransactionInitialTimeout: 60000,
