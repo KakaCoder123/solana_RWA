@@ -58,7 +58,11 @@ export function useSale() {
 
   const getProgram = useCallback(() => {
     if (!anchorWallet) return null
-    const provider = new AnchorProvider(connection, anchorWallet, { commitment: 'confirmed' })
+    const provider = new AnchorProvider(connection, anchorWallet, {
+      commitment: 'confirmed',
+      skipPreflight: false,
+      preflightCommitment: 'confirmed',
+    })
     return new Program(IDL as any, provider)
   }, [connection, anchorWallet])
 
@@ -91,13 +95,21 @@ export function useSale() {
   // Получить историю сделок из on-chain логов
   const fetchHistory = useCallback(async () => {
     try {
-      const sigs = await connection.getSignaturesForAddress(SALE_PROGRAM_ID, { limit: 25 })
+      const sigs = await connection.getSignaturesForAddress(SALE_PROGRAM_ID, { limit: 10 })
       if (!sigs.length) return
 
-      const txs = await connection.getParsedTransactions(
-        sigs.map(s => s.signature),
-        { maxSupportedTransactionVersion: 0, commitment: 'confirmed' }
-      )
+      // Fetch in batches of 5 to avoid 429
+      const allTxs = []
+      for (let i = 0; i < sigs.length; i += 5) {
+        const batch = sigs.slice(i, i + 5)
+        const txBatch = await connection.getParsedTransactions(
+          batch.map(s => s.signature),
+          { maxSupportedTransactionVersion: 0, commitment: 'confirmed' }
+        )
+        allTxs.push(...txBatch)
+        if (i + 5 < sigs.length) await new Promise(r => setTimeout(r, 300))
+      }
+      const txs = allTxs
 
       const entries: TradeHistoryEntry[] = []
 

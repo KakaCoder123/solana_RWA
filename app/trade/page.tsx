@@ -238,11 +238,11 @@ export default function TradePage() {
                 }}>{v}</button>
               ))}
             </div>
-            <button onClick={handleBuy} disabled={buying || !pool?.isActive || !solAmtNum} style={{
+            <button onClick={handleBuy} disabled={buying || !solAmtNum} style={{
               width: '100%', padding: '13px', borderRadius: 10, cursor: (buying || !solAmtNum) ? 'not-allowed' : 'pointer',
               fontSize: 13, fontWeight: 900, letterSpacing: 1.2,
               background: buying ? 'rgba(20,241,149,0.2)' : 'linear-gradient(135deg, #14F195, #0ea572)',
-              border: 'none', color: '#0a0a0f', opacity: (!solAmtNum || !pool?.isActive) ? 0.5 : 1,
+              border: 'none', color: '#0a0a0f', opacity: !solAmtNum ? 0.5 : 1,
             }}>
               {buying ? 'SIGNING...' : '▲ BUY VEND'}
             </button>
@@ -270,12 +270,12 @@ export default function TradePage() {
             {pool && pool.vaultBalance < (parseFloat(vendSell) || 0) * price && parseFloat(vendSell) > 0 && (
               <div style={{ fontSize: 11, color: '#ef4444', textAlign: 'center' }}>⚠ Insufficient vault liquidity</div>
             )}
-            <button onClick={handleSell} disabled={selling || !pool?.isActive || !parseFloat(vendSell)} style={{
+            <button onClick={handleSell} disabled={selling || !parseFloat(vendSell)} style={{
               width: '100%', padding: '13px', borderRadius: 10,
               cursor: (selling || !parseFloat(vendSell)) ? 'not-allowed' : 'pointer',
               fontSize: 13, fontWeight: 900, letterSpacing: 1.2,
               background: 'transparent', border: '1px solid rgba(239,68,68,0.5)',
-              color: '#ef4444', opacity: (!parseFloat(vendSell) || !pool?.isActive) ? 0.5 : 1,
+              color: '#ef4444', opacity: !parseFloat(vendSell) ? 0.5 : 1,
             }}>
               {selling ? 'SIGNING...' : '▼ SELL VEND'}
             </button>
