@@ -201,20 +201,10 @@ pub mod vend_sale {
             amount_tokens,
         )?;
 
-        // SOL из vault → seller (через invoke_signed так как vault — PDA)
-        let vault_bump = ctx.bumps.sale_vault;
-        let vault_seeds: &[&[u8]] = &[b"sale_vault", &[vault_bump]];
-        system_program::transfer(
-            CpiContext::new_with_signer(
-                ctx.accounts.system_program.to_account_info(),
-                system_program::Transfer {
-                    from: ctx.accounts.sale_vault.to_account_info(),
-                    to:   ctx.accounts.seller.to_account_info(),
-                },
-                &[vault_seeds],
-            ),
-            sol_payout,
-        )?;
+        // SOL из vault → seller (прямая манипуляция lamports — system_program::transfer
+        // не работает из аккаунтов с данными: NonSystemAccountDataNotEmpty)
+        **ctx.accounts.sale_vault.to_account_info().try_borrow_mut_lamports()? -= sol_payout;
+        **ctx.accounts.seller.to_account_info().try_borrow_mut_lamports()? += sol_payout;
 
         let pool = &mut ctx.accounts.sale_pool;
         pool.total_bought_back = pool.total_bought_back
@@ -369,8 +359,7 @@ pub struct SellTokens<'info> {
     #[account(mut, seeds = [b"sale_vault"], bump)]
     pub sale_vault: Account<'info, SaleVault>,
 
-    pub token_program:  Program<'info, Token>,
-    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]

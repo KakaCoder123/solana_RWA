@@ -242,9 +242,8 @@ export function useSale() {
           { pubkey: getSalePoolPda(),                                    isSigner: false, isWritable: true  },
           { pubkey: VEND_MINT,                                           isSigner: false, isWritable: true  },
           { pubkey: getAssociatedTokenAddressSync(VEND_MINT, publicKey), isSigner: false, isWritable: true  },
-          { pubkey: getSaleVaultPda(),                                   isSigner: false, isWritable: true  },
-          { pubkey: TOKEN_PROGRAM_ID,                                    isSigner: false, isWritable: false },
-          { pubkey: SystemProgram.programId,                             isSigner: false, isWritable: false },
+          { pubkey: getSaleVaultPda(),   isSigner: false, isWritable: true  },
+          { pubkey: TOKEN_PROGRAM_ID,   isSigner: false, isWritable: false },
         ],
         data: Buffer.from(merged),
       })

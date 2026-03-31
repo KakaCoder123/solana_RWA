@@ -129,10 +129,12 @@ export default function TradePage() {
       setSolBal(sol / LAMPORTS_PER_SOL)
     } catch { /* ignore */ }
     try {
-      const { getAssociatedTokenAddressSync } = await import('@solana/spl-token')
-      const ata = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
-      const info = await connection.getTokenAccountBalance(ata)
-      setVendBal(parseFloat(info.value.uiAmountString ?? '0'))
+      const accounts = await connection.getParsedTokenAccountsByOwner(
+        publicKey, { mint: VEND_MINT }
+      )
+      const amount = accounts.value[0]
+        ?.account.data.parsed.info.tokenAmount.uiAmount ?? 0
+      setVendBal(amount)
     } catch { setVendBal(0) }
   }, [publicKey, connection])
 
