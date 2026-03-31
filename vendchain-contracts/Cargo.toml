@@ -1,6 +1,9 @@
 [workspace]
 members = [
-    "programs/vendchain-contracts"
+    "programs/vendchain-contracts",
+    "programs/vend-machine",
+    "programs/vend-treasury",
+    "programs/vend-sale"
 ]
 resolver = "2"
 
@@ -8,6 +11,7 @@ resolver = "2"
 overflow-checks = true
 lto = "fat"
 codegen-units = 1
+opt-level = "z"
 [profile.release.build-override]
 opt-level = 3
 incremental = false

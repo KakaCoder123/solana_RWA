@@ -1,37 +1,19 @@
 'use client'
 
-import Link from 'next/link'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import NavBar from '@/components/NavBar'
+import { useStaking } from '@/hooks/useStaking'
 
-// ── Types ──────────────────────────────────────────────────────
-type LockPeriod = '30D' | '90D' | '180D'
-
-interface ActiveStake {
-  tier: string
-  id: string
-  color: string
-  staked: string
-  stakedUsd: string
-  rewards: string
-  progress: number
-  daysLeft: number
-  claimable: boolean
-}
-
-// ── Mock data ──────────────────────────────────────────────────
+// ── Tier definitions (UI only — all map to same on-chain pool) ─────
 const TIERS = [
   {
     name: 'BRONZE TIER',
     icon: '🥉',
-    desc: 'Entry-level yield for short-term liquidity maintenance.',
-    duration: '30 Days',
-    apy: '5%',
-    apyNum: 5,
-    minStake: '1,000 VEND',
-    minNum: 1000,
+    desc: 'Entry-level yield. Stake any amount and earn real on-chain rewards.',
+    minNum: 100,
+    minStake: '100 VEND',
     color: '#CD7F32',
     glow: 'rgba(205,127,50,0.15)',
     border: 'rgba(205,127,50,0.25)',
@@ -40,12 +22,9 @@ const TIERS = [
   {
     name: 'SILVER TIER',
     icon: '🥈',
-    desc: 'Balanced risk-reward ratio for established holders.',
-    duration: '90 Days',
-    apy: '12%',
-    apyNum: 12,
-    minStake: '10,000 VEND',
-    minNum: 10000,
+    desc: 'Balanced staking for established VEND holders. Unlock protocol rewards.',
+    minNum: 1000,
+    minStake: '1,000 VEND',
     color: '#14F195',
     glow: 'rgba(99,102,241,0.2)',
     border: 'rgba(99,102,241,0.5)',
@@ -54,12 +33,9 @@ const TIERS = [
   {
     name: 'GOLD TIER',
     icon: '🏆',
-    desc: 'Maximum rewards for the long-term governance partners.',
-    duration: '180 Days',
-    apy: '22%',
-    apyNum: 22,
-    minStake: '50,000 VEND',
-    minNum: 50000,
+    desc: 'Maximum exposure for long-term governance partners.',
+    minNum: 10000,
+    minStake: '10,000 VEND',
     color: '#FFB800',
     glow: 'rgba(255,184,0,0.12)',
     border: 'rgba(255,184,0,0.25)',
@@ -67,24 +43,29 @@ const TIERS = [
   },
 ]
 
-const ACTIVE_STAKES: ActiveStake[] = [
-  { tier: 'SILVER', id: '#VC-3821', color: '#818cf8', staked: '12,000 VEND', stakedUsd: '$1,200.00', rewards: '+142.50 VEND', progress: 65, daysLeft: 22, claimable: true },
-  { tier: 'BRONZE', id: '#VC-9194', color: '#CD7F32', staked: '5,000 VEND',  stakedUsd: '$500.00',    rewards: '+12.20 VEND',  progress: 12, daysLeft: 26, claimable: false },
-]
+function fmtVend(n: number) { return n.toLocaleString('en-US', { maximumFractionDigits: 4 }) }
+function fmtDays(sec: number) {
+  const d = Math.floor(sec / 86400)
+  const h = Math.floor((sec % 86400) / 3600)
+  return d > 0 ? `${d}d ${h}h` : `${h}h`
+}
 
-const APY_BY_PERIOD: Record<LockPeriod, number> = { '30D': 5, '90D': 12, '180D': 22 }
-const DAYS_BY_PERIOD: Record<LockPeriod, number> = { '30D': 30, '90D': 90, '180D': 180 }
-
-// ── Page ───────────────────────────────────────────────────────
+// ── Page ───────────────────────────────────────────────────────────
 export default function StakingPage() {
   const { connected, connecting } = useWallet()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
   const [calcAmt, setCalcAmt] = useState('')
-  const [lockPeriod, setLockPeriod] = useState<LockPeriod>('30D')
   const [stakeModal, setStakeModal] = useState<typeof TIERS[0] | null>(null)
   const [stakeInput, setStakeInput] = useState('')
-  const [claimed, setClaimed] = useState<string[]>([])
+  const [unstakeInput, setUnstakeInput] = useState('')
+  const [showUnstakeInput, setShowUnstakeInput] = useState(false)
+
+  const {
+    pool, userStake, unstakeRequest,
+    loading, txLoading, error,
+    apyPercent, stake, requestUnstake, withdraw, claimRewards, clearError,
+  } = useStaking()
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => {
@@ -98,17 +79,32 @@ export default function StakingPage() {
   )
   if (!connected) return null
 
-  // Calc
+  // Calculator
   const calcNum = parseFloat(calcAmt) || 0
-  const apy = APY_BY_PERIOD[lockPeriod]
-  const days = DAYS_BY_PERIOD[lockPeriod]
-  const estimatedReward = calcNum > 0 ? (calcNum * (apy / 100) * (days / 365)).toFixed(2) : '0.00'
-  const roiPct = `${apy.toFixed(1)}%`
+  const estimatedReward = calcNum > 0
+    ? (calcNum * (apyPercent / 100) * (7 / 365)).toFixed(4)
+    : '0.0000'
 
   const card: React.CSSProperties = {
     background: 'rgba(255,255,255,0.03)',
     border: '1px solid rgba(255,255,255,0.07)',
     borderRadius: 16,
+  }
+
+  const handleStake = async () => {
+    const amt = parseFloat(stakeInput)
+    if (!amt || amt <= 0) return
+    await stake(amt)
+    setStakeModal(null)
+    setStakeInput('')
+  }
+
+  const handleRequestUnstake = async () => {
+    const amt = parseFloat(unstakeInput)
+    if (!amt || amt <= 0 || !userStake || amt > userStake.stakedAmount) return
+    await requestUnstake(amt)
+    setShowUnstakeInput(false)
+    setUnstakeInput('')
   }
 
   return (
@@ -120,12 +116,10 @@ export default function StakingPage() {
         maxWidth: 1200, margin: '0 auto', padding: '60px 32px 48px',
         display: 'grid', gridTemplateColumns: '1fr 420px', gap: 48, alignItems: 'center',
       }}>
-        {/* Left: title */}
         <div>
           <h1 style={{
             fontSize: 'clamp(52px, 7vw, 88px)', fontWeight: 900,
-            letterSpacing: '-3px', lineHeight: 0.95, marginBottom: 28,
-            userSelect: 'none',
+            letterSpacing: '-3px', lineHeight: 0.95, marginBottom: 28, userSelect: 'none',
           }}>
             <span style={{ color: '#fff' }}>STAKING</span><br />
             <span style={{
@@ -135,58 +129,92 @@ export default function StakingPage() {
           </h1>
           <p style={{ fontSize: 16, color: '#64748b', lineHeight: 1.75, maxWidth: 460 }}>
             Commit your VEND assets to secure the decentralized vending ecosystem.
-            High-yield liquidity provision across multiple tiers.
+            Real on-chain rewards — 7-day lockup, linear accrual.
           </p>
+          {/* On-chain badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
+            <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#14F195', display: 'inline-block', boxShadow: '0 0 8px #14F195' }} />
+            <span style={{ fontSize: 11, color: '#14F195', fontWeight: 700, letterSpacing: 1 }}>LIVE ON SOLANA DEVNET</span>
+          </div>
         </div>
 
-        {/* Right: stat cards */}
+        {/* Stat cards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Row 1 */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <div style={{ ...card, padding: '20px 22px' }}>
-              <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1.5, marginBottom: 10 }}>GLOBAL TVL</div>
-              <div style={{ fontSize: 28, fontWeight: 900, marginBottom: 6 }}>$12.4M</div>
-              <div style={{ fontSize: 12, color: '#14F195' }}>↑ +4.2%</div>
+              <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1.5, marginBottom: 10 }}>TOTAL STAKED</div>
+              <div style={{ fontSize: 24, fontWeight: 900, marginBottom: 4 }}>
+                {loading ? '—' : `${fmtVend(pool?.totalStaked ?? 0)}`}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>VEND on-chain</div>
             </div>
             <div style={{ ...card, padding: '20px 22px' }}>
-              <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1.5, marginBottom: 10 }}>AVG APY</div>
-              <div style={{ fontSize: 28, fontWeight: 900, color: '#14F195', marginBottom: 6 }}>14.2%</div>
-              <div style={{ fontSize: 12, color: '#64748b' }}>Dynamic optimization</div>
+              <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1.5, marginBottom: 10 }}>POOL APY</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: '#14F195', marginBottom: 4 }}>
+                {loading ? '—' : `${apyPercent.toFixed(1)}%`}
+              </div>
+              <div style={{ fontSize: 11, color: '#64748b' }}>Linear, per second</div>
             </div>
           </div>
 
-          {/* Your share */}
+          {/* User share */}
           <div style={{
             ...card, padding: '20px 22px',
             background: 'rgba(99,102,241,0.06)',
             border: '1px solid rgba(99,102,241,0.2)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-              <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1.5 }}>YOUR SHARE</div>
+              <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1.5 }}>YOUR STAKE</div>
               <div style={{
-                background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)',
-                borderRadius: 6, padding: '2px 10px', fontSize: 9, color: '#818cf8', fontWeight: 700, letterSpacing: 1,
-              }}>ACTIVE ACCOUNT</div>
+                background: userStake ? 'rgba(20,241,149,0.15)' : 'rgba(99,102,241,0.2)',
+                border: `1px solid ${userStake ? 'rgba(20,241,149,0.4)' : 'rgba(99,102,241,0.4)'}`,
+                borderRadius: 6, padding: '2px 10px',
+                fontSize: 9, color: userStake ? '#14F195' : '#818cf8',
+                fontWeight: 700, letterSpacing: 1,
+              }}>{userStake ? 'ACTIVE' : 'NO STAKE'}</div>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <div style={{ fontSize: 26, fontWeight: 900 }}>
-                42,500.00 <span style={{ fontSize: 16, color: '#818cf8' }}>VEND</span>
+                {loading ? '—' : fmtVend(userStake?.stakedAmount ?? 0)}{' '}
+                <span style={{ fontSize: 16, color: '#818cf8' }}>VEND</span>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: '#94a3b8' }}>≈ $4,250.00</div>
-                <div style={{ fontSize: 11, color: '#475569' }}>0.34% of pool</div>
+                <div style={{ fontSize: 13, color: '#14F195', fontWeight: 700 }}>
+                  +{fmtVend(userStake?.pendingRewards ?? 0)} pending
+                </div>
+                {pool && pool.totalStaked > 0 && userStake && (
+                  <div style={{ fontSize: 11, color: '#475569' }}>
+                    {((userStake.stakedAmount / pool.totalStaked) * 100).toFixed(2)}% of pool
+                  </div>
+                )}
               </div>
             </div>
           </div>
         </div>
       </section>
 
+      {/* ── ERROR BANNER ── */}
+      {error && (
+        <div style={{
+          maxWidth: 1200, margin: '0 auto 16px', padding: '0 32px',
+        }}>
+          <div style={{
+            background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)',
+            borderRadius: 10, padding: '12px 16px',
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          }}>
+            <span style={{ fontSize: 13, color: '#f87171' }}>{error}</span>
+            <button onClick={clearError} style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: 16 }}>×</button>
+          </div>
+        </div>
+      )}
+
       {/* ── TIERS ── */}
       <section style={{ maxWidth: 1200, margin: '0 auto', padding: '0 32px 56px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 28 }}>
           <h2 style={{ fontSize: 18, fontWeight: 900, letterSpacing: 1 }}>AVAILABLE TIERS</h2>
           <div style={{ fontSize: 12, color: '#475569' }}>
-            SORT BY: <span style={{ color: '#818cf8', fontWeight: 700 }}>ROI High</span>
+            APY: <span style={{ color: '#14F195', fontWeight: 700 }}>{apyPercent.toFixed(1)}% (on-chain)</span>
           </div>
         </div>
 
@@ -198,15 +226,13 @@ export default function StakingPage() {
                 ? 'linear-gradient(135deg, rgba(99,102,241,0.1), rgba(79,70,229,0.05))'
                 : 'rgba(255,255,255,0.03)',
               border: `1px solid ${tier.border}`,
-              borderRadius: 18,
-              padding: '28px 26px',
+              borderRadius: 18, padding: '28px 26px',
               boxShadow: tier.popular ? `0 0 40px ${tier.glow}` : 'none',
               transition: 'transform 0.2s, box-shadow 0.2s',
             }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = `0 16px 48px ${tier.glow}` }}
               onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = tier.popular ? `0 0 40px ${tier.glow}` : 'none' }}
             >
-              {/* Most popular badge */}
               {tier.popular && (
                 <div style={{
                   position: 'absolute', top: -12, left: '50%', transform: 'translateX(-50%)',
@@ -215,43 +241,33 @@ export default function StakingPage() {
                   fontSize: 10, fontWeight: 800, letterSpacing: 1, color: '#fff', whiteSpace: 'nowrap',
                 }}>MOST POPULAR</div>
               )}
-
-              {/* Icon */}
               <div style={{ fontSize: 28, marginBottom: 14 }}>{tier.icon}</div>
-
-              {/* Name + desc */}
               <h3 style={{ fontSize: 18, fontWeight: 900, marginBottom: 8, letterSpacing: 0.3 }}>{tier.name}</h3>
               <p style={{ fontSize: 13, color: '#64748b', lineHeight: 1.65, marginBottom: 24, minHeight: 40 }}>{tier.desc}</p>
 
-              {/* Stats */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
                 {[
-                  { label: 'DURATION', value: tier.duration, valueColor: '#fff' },
-                  { label: 'APY', value: tier.apy, valueColor: '#14F195' },
-                  { label: 'MIN. STAKE', value: tier.minStake, valueColor: '#fff' },
-                ].map(({ label, value, valueColor }) => (
+                  { label: 'LOCKUP', value: '7 Days', color: '#fff' },
+                  { label: 'APY', value: loading ? '—' : `${apyPercent.toFixed(1)}%`, color: '#14F195' },
+                  { label: 'MIN. STAKE', value: tier.minStake, color: '#fff' },
+                ].map(({ label, value, color }) => (
                   <div key={label} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontSize: 11, color: '#475569', fontWeight: 700, letterSpacing: 1 }}>{label}</span>
-                    <span style={{ fontSize: 14, fontWeight: 800, color: valueColor }}>{value}</span>
+                    <span style={{ fontSize: 14, fontWeight: 800, color }}>{value}</span>
                   </div>
                 ))}
               </div>
 
-              <button onClick={() => { setStakeModal(tier); setStakeInput('') }} style={{
-                width: '100%', padding: '13px', borderRadius: 10, cursor: 'pointer',
-                fontSize: 13, fontWeight: 800, letterSpacing: 1.2,
-                background: tier.popular ? 'linear-gradient(135deg, #6366f1, #9945FF)' : 'transparent',
-                border: tier.popular ? 'none' : `1px solid rgba(255,255,255,0.15)`,
-                color: tier.popular ? '#fff' : '#94a3b8',
-                transition: 'all 0.2s',
-              }}
-                onMouseEnter={e => {
-                  if (!tier.popular) { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = '#fff' }
-                  else e.currentTarget.style.opacity = '0.85'
-                }}
-                onMouseLeave={e => {
-                  if (!tier.popular) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#94a3b8' }
-                  else e.currentTarget.style.opacity = '1'
+              <button
+                onClick={() => { setStakeModal(tier); setStakeInput(''); clearError() }}
+                disabled={txLoading}
+                style={{
+                  width: '100%', padding: '13px', borderRadius: 10, cursor: txLoading ? 'not-allowed' : 'pointer',
+                  fontSize: 13, fontWeight: 800, letterSpacing: 1.2, opacity: txLoading ? 0.6 : 1,
+                  background: tier.popular ? 'linear-gradient(135deg, #6366f1, #9945FF)' : 'transparent',
+                  border: tier.popular ? 'none' : '1px solid rgba(255,255,255,0.15)',
+                  color: tier.popular ? '#fff' : '#94a3b8',
+                  transition: 'all 0.2s',
                 }}
               >STAKE NOW</button>
             </div>
@@ -290,28 +306,21 @@ export default function StakingPage() {
 
           <div style={{ marginBottom: 22 }}>
             <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1, marginBottom: 10 }}>LOCK PERIOD</div>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {(['30D', '90D', '180D'] as LockPeriod[]).map(p => (
-                <button key={p} onClick={() => setLockPeriod(p)} style={{
-                  flex: 1, padding: '8px 0', borderRadius: 8, cursor: 'pointer',
-                  fontSize: 12, fontWeight: 700,
-                  background: lockPeriod === p ? 'rgba(99,102,241,0.3)' : 'rgba(255,255,255,0.04)',
-                  border: `1px solid ${lockPeriod === p ? '#6366f1' : 'rgba(255,255,255,0.08)'}`,
-                  color: lockPeriod === p ? '#fff' : '#64748b',
-                  transition: 'all 0.2s',
-                }}>{p}</button>
-              ))}
-            </div>
+            <div style={{
+              padding: '10px 14px', borderRadius: 8,
+              background: 'rgba(99,102,241,0.15)', border: '1px solid #6366f1',
+              fontSize: 13, fontWeight: 700, color: '#fff',
+            }}>7 Days (on-chain lockup)</div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-              <span style={{ fontSize: 11, color: '#475569', fontWeight: 700, letterSpacing: 0.5 }}>ESTIMATED REWARD</span>
+              <span style={{ fontSize: 11, color: '#475569', fontWeight: 700, letterSpacing: 0.5 }}>ESTIMATED / 7 DAYS</span>
               <span style={{ fontSize: 15, fontWeight: 900, color: '#14F195' }}>{estimatedReward} VEND</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 4 }}>
-              <span style={{ fontSize: 11, color: '#475569', fontWeight: 700, letterSpacing: 0.5 }}>ROI PERCENT</span>
-              <span style={{ fontSize: 15, fontWeight: 900, color: '#fff' }}>{roiPct}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: 11, color: '#475569', fontWeight: 700, letterSpacing: 0.5 }}>APY (on-chain)</span>
+              <span style={{ fontSize: 15, fontWeight: 900, color: '#fff' }}>{apyPercent.toFixed(1)}%</span>
             </div>
           </div>
         </div>
@@ -321,103 +330,230 @@ export default function StakingPage() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 22 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 16 }}>⏱</span>
-              <h2 style={{ fontSize: 14, fontWeight: 900, letterSpacing: 1 }}>ACTIVE STAKES</h2>
+              <h2 style={{ fontSize: 14, fontWeight: 900, letterSpacing: 1 }}>ON-CHAIN POSITIONS</h2>
             </div>
-            <button style={{
-              background: 'none', border: 'none', color: '#6366f1',
-              fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.5,
-            }}>CLAIM ALL REWARDS</button>
+            {userStake && userStake.stakedAmount > 0 && (
+              <button
+                onClick={() => { setShowUnstakeInput(!showUnstakeInput); setUnstakeInput(''); clearError() }}
+                disabled={txLoading}
+                style={{
+                  background: 'none', border: '1px solid rgba(99,102,241,0.4)',
+                  borderRadius: 8, padding: '5px 12px',
+                  color: '#818cf8', fontSize: 12, fontWeight: 700, cursor: 'pointer', letterSpacing: 0.5,
+                }}
+              >REQUEST UNSTAKE</button>
+            )}
           </div>
 
-          {/* Table header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '140px 160px 160px 1fr 100px', gap: 8, padding: '0 8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            {['TIER / ID', 'STAKED AMOUNT', 'REWARDS', 'UNLOCKS IN', 'ACTION'].map(h => (
-              <div key={h} style={{ fontSize: 10, color: '#334155', fontWeight: 700, letterSpacing: 1 }}>{h}</div>
-            ))}
-          </div>
+          {/* Unstake input */}
+          {showUnstakeInput && userStake && (
+            <div style={{
+              background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.3)',
+              borderRadius: 10, padding: 16, marginBottom: 16,
+              display: 'flex', gap: 10, alignItems: 'center',
+            }}>
+              <input
+                type="number"
+                value={unstakeInput}
+                onChange={e => setUnstakeInput(e.target.value)}
+                placeholder={`Max: ${fmtVend(userStake.stakedAmount)}`}
+                style={{
+                  flex: 1, background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8,
+                  padding: '10px 14px', color: '#fff', fontSize: 14, outline: 'none',
+                }}
+              />
+              <span style={{ fontSize: 12, color: '#64748b' }}>VEND</span>
+              <button
+                onClick={handleRequestUnstake}
+                disabled={txLoading}
+                style={{
+                  background: 'rgba(99,102,241,0.3)', border: '1px solid #6366f1',
+                  borderRadius: 8, padding: '10px 16px',
+                  color: '#fff', fontSize: 12, fontWeight: 800, cursor: txLoading ? 'not-allowed' : 'pointer',
+                }}
+              >{txLoading ? '...' : 'CONFIRM'}</button>
+            </div>
+          )}
 
-          {/* Rows */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
-            {ACTIVE_STAKES.map((s, i) => {
-              const isClaimed = claimed.includes(s.id)
-              return (
-                <div key={i} style={{
-                  display: 'grid', gridTemplateColumns: '140px 160px 160px 1fr 100px', gap: 8,
-                  padding: '14px 8px', borderRadius: 10,
-                  background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)',
+          {loading ? (
+            <div style={{ padding: '40px 0', textAlign: 'center', color: '#334155', fontSize: 13 }}>
+              Loading on-chain data...
+            </div>
+          ) : !userStake && !unstakeRequest ? (
+            <div style={{ padding: '40px 0', textAlign: 'center' }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📊</div>
+              <div style={{ color: '#334155', fontSize: 13 }}>No active positions. Stake VEND to begin earning.</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+              {/* Active Stake Row */}
+              {userStake && userStake.stakedAmount > 0 && (
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '160px 160px 1fr 120px', gap: 12,
+                  padding: '14px 12px', borderRadius: 10,
+                  background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)',
                   alignItems: 'center',
                 }}>
-                  {/* Tier/ID */}
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.color, display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: 800, color: s.color }}>{s.tier}</span>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#14F195', display: 'inline-block' }} />
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#14F195' }}>STAKED</span>
                     </div>
-                    <div style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>{s.id}</div>
+                    <div style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>vend_staking.sol</div>
                   </div>
-
-                  {/* Staked */}
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700 }}>{s.staked}</div>
-                    <div style={{ fontSize: 11, color: '#475569' }}>{s.stakedUsd}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{fmtVend(userStake.stakedAmount)} VEND</div>
+                    <div style={{ fontSize: 11, color: '#475569' }}>earning {apyPercent.toFixed(1)}% APY</div>
                   </div>
-
-                  {/* Rewards */}
                   <div>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: '#14F195' }}>{s.rewards}</div>
-                    <div style={{ fontSize: 11, color: '#475569' }}>{isClaimed ? 'Claimed' : 'Unclaimed'}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: '#14F195' }}>+{fmtVend(userStake.pendingRewards)} VEND</div>
+                    <div style={{ fontSize: 11, color: '#475569' }}>pending rewards</div>
                   </div>
-
-                  {/* Progress + days */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, color: '#64748b' }}>{s.progress}%</span>
-                      <span style={{ fontSize: 11, color: '#64748b' }}>{s.daysLeft} Days</span>
-                    </div>
-                    <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 2, overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 2,
-                        width: `${s.progress}%`,
-                        background: s.claimable
-                          ? 'linear-gradient(90deg, #6366f1, #14F195)'
-                          : '#CD7F32',
-                        transition: 'width 0.5s ease',
-                      }} />
-                    </div>
-                  </div>
-
-                  {/* Action */}
-                  {s.claimable ? (
-                    <button
-                      onClick={() => setClaimed(prev => [...prev, s.id])}
-                      disabled={isClaimed}
-                      style={{
-                        padding: '7px 16px', borderRadius: 8, cursor: isClaimed ? 'default' : 'pointer',
-                        fontSize: 12, fontWeight: 800, letterSpacing: 0.5,
-                        background: isClaimed ? 'rgba(255,255,255,0.05)' : '#14F195',
-                        border: 'none',
-                        color: isClaimed ? '#475569' : '#000',
-                        transition: 'all 0.2s',
-                      }}
-                    >{isClaimed ? 'CLAIMED' : 'CLAIM'}</button>
-                  ) : (
-                    <button style={{
-                      padding: '7px 16px', borderRadius: 8, cursor: 'not-allowed',
-                      fontSize: 12, fontWeight: 800, letterSpacing: 0.5,
-                      background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
-                      color: '#334155',
-                    }}>LOCKED</button>
-                  )}
+                  <button
+                    onClick={claimRewards}
+                    disabled={txLoading || userStake.pendingRewards === 0}
+                    style={{
+                      padding: '8px 16px', borderRadius: 8,
+                      fontSize: 12, fontWeight: 800,
+                      background: userStake.pendingRewards > 0 ? '#14F195' : 'rgba(255,255,255,0.05)',
+                      border: 'none',
+                      color: userStake.pendingRewards > 0 ? '#000' : '#334155',
+                      cursor: txLoading || userStake.pendingRewards === 0 ? 'not-allowed' : 'pointer',
+                      opacity: txLoading ? 0.6 : 1,
+                      transition: 'all 0.2s',
+                    }}
+                  >{txLoading ? '...' : userStake.pendingRewards > 0 ? 'CLAIM' : 'NO REWARDS'}</button>
                 </div>
-              )
-            })}
-          </div>
+              )}
+
+              {/* Unstake Request Row */}
+              {unstakeRequest && (
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '160px 160px 1fr 120px', gap: 12,
+                  padding: '14px 12px', borderRadius: 10,
+                  background: 'rgba(255,184,0,0.04)', border: '1px solid rgba(255,184,0,0.2)',
+                  alignItems: 'center',
+                }}>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FFB800', display: 'inline-block' }} />
+                      <span style={{ fontSize: 13, fontWeight: 800, color: '#FFB800' }}>UNSTAKING</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>7-day lockup</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 14, fontWeight: 700 }}>{fmtVend(unstakeRequest.amount)} VEND</div>
+                    <div style={{ fontSize: 11, color: '#475569' }}>pending withdrawal</div>
+                  </div>
+                  <div>
+                    {unstakeRequest.isUnlocked ? (
+                      <div style={{ fontSize: 14, fontWeight: 700, color: '#14F195' }}>Ready to withdraw!</div>
+                    ) : (
+                      <>
+                        <div style={{ fontSize: 14, fontWeight: 700 }}>{fmtDays(unstakeRequest.secondsLeft)}</div>
+                        <div style={{ fontSize: 11, color: '#475569' }}>until unlock</div>
+                      </>
+                    )}
+                  </div>
+                  <button
+                    onClick={withdraw}
+                    disabled={txLoading || !unstakeRequest.isUnlocked}
+                    style={{
+                      padding: '8px 16px', borderRadius: 8,
+                      fontSize: 12, fontWeight: 800,
+                      background: unstakeRequest.isUnlocked ? '#FFB800' : 'rgba(255,255,255,0.04)',
+                      border: unstakeRequest.isUnlocked ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                      color: unstakeRequest.isUnlocked ? '#000' : '#334155',
+                      cursor: txLoading || !unstakeRequest.isUnlocked ? 'not-allowed' : 'pointer',
+                      opacity: txLoading ? 0.6 : 1,
+                      transition: 'all 0.2s',
+                    }}
+                  >{unstakeRequest.isUnlocked ? 'WITHDRAW' : 'LOCKED'}</button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </section>
 
-     
+      {/* ── STAKE MODAL ── */}
+      {stakeModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setStakeModal(null)}>
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#0f1117', border: `1px solid ${stakeModal.border}`,
+              borderRadius: 20, padding: 36, width: 420,
+              boxShadow: `0 0 60px ${stakeModal.glow}`,
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+              <div>
+                <div style={{ fontSize: 22, marginBottom: 4 }}>{stakeModal.icon}</div>
+                <h3 style={{ fontSize: 20, fontWeight: 900, letterSpacing: 0.3 }}>{stakeModal.name}</h3>
+              </div>
+              <button onClick={() => setStakeModal(null)} style={{ background: 'none', border: 'none', color: '#475569', fontSize: 22, cursor: 'pointer' }}>×</button>
+            </div>
 
-      
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24, fontSize: 13 }}>
+              {[
+                { label: 'MIN. STAKE', value: stakeModal.minStake },
+                { label: 'APY', value: `${apyPercent.toFixed(1)}%`, color: '#14F195' },
+                { label: 'LOCKUP', value: '7 days (on-chain)' },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#475569', fontWeight: 600 }}>{label}</span>
+                  <span style={{ fontWeight: 800, color: color || '#fff' }}>{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>AMOUNT TO STAKE</div>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="number"
+                  value={stakeInput}
+                  onChange={e => setStakeInput(e.target.value)}
+                  placeholder={`Min: ${stakeModal.minNum} VEND`}
+                  autoFocus
+                  style={{
+                    width: '100%', background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 10, padding: '14px 52px 14px 14px',
+                    color: '#fff', fontSize: 18, fontWeight: 700, outline: 'none',
+                  }}
+                />
+                <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 12, fontWeight: 700, color: '#475569' }}>VEND</span>
+              </div>
+            </div>
+
+            <button
+              onClick={handleStake}
+              disabled={txLoading || !stakeInput || parseFloat(stakeInput) < stakeModal.minNum}
+              style={{
+                width: '100%', padding: '15px', borderRadius: 12,
+                background: 'linear-gradient(135deg, #6366f1, #9945FF)',
+                border: 'none', color: '#fff',
+                fontSize: 14, fontWeight: 800, letterSpacing: 1,
+                cursor: (txLoading || !stakeInput || parseFloat(stakeInput) < stakeModal.minNum) ? 'not-allowed' : 'pointer',
+                opacity: (txLoading || !stakeInput || parseFloat(stakeInput) < stakeModal.minNum) ? 0.5 : 1,
+                transition: 'opacity 0.2s',
+              }}
+            >{txLoading ? 'Sending transaction...' : 'CONFIRM STAKE'}</button>
+
+            <p style={{ fontSize: 11, color: '#334155', textAlign: 'center', marginTop: 12 }}>
+              Transaction will be signed with your Solana wallet
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -1,0 +1,4 @@
+vendchain-contracts/
+scripts/
+node_modules/
+.next/
