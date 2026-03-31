@@ -1,27 +1,43 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
-import { useWallet, useAnchorWallet, useConnection } from '@solana/wallet-adapter-react'
-import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
-import { getAssociatedTokenAddressSync } from '@solana/spl-token'
+import { useWallet, useConnection } from '@solana/wallet-adapter-react'
+import {
+  PublicKey, LAMPORTS_PER_SOL, Transaction, TransactionInstruction, SystemProgram,
+} from '@solana/web3.js'
+import { AnchorProvider, Program } from '@coral-xyz/anchor'
+import {
+  getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+} from '@solana/spl-token'
 import IDL from '../lib/idl/vend_sale.json'
 import { SALE_PROGRAM_ID, VEND_MINT, VEND_LAMPORTS, SALE_TREASURY, SALE_PRICE_LAMPORTS } from '../lib/anchor'
 
+// ── Precomputed discriminators (sha256("global:{ix}")[0..8]) ──────────────────
+const BUY_DISC  = Buffer.from([189, 21, 230, 133, 247,   2, 110,  42])
+const SELL_DISC = Buffer.from([114, 242,  25,  12,  62, 126,  92,   2])
+
+function u64le(n: number): Buffer {
+  const buf = Buffer.alloc(8)
+  buf.writeBigUInt64LE(BigInt(Math.floor(n)))
+  return buf
+}
+
 export interface SalePoolData {
-  pricePerVend:    number    // SOL за 1 VEND
-  totalSold:       number    // VEND
-  totalBoughtBack: number    // VEND
-  vaultBalance:    number    // SOL в vault
+  pricePerVend:    number
+  totalSold:       number
+  totalBoughtBack: number
+  vaultBalance:    number
   isActive:        boolean
   treasury:        PublicKey
 }
 
 export interface TradeHistoryEntry {
   type:      'Buy' | 'Sell'
-  amount:    number   // VEND
-  solAmount: number   // SOL
-  wallet:    string   // сокращённый адрес
+  amount:    number
+  solAmount: number
+  wallet:    string
   signature: string
   time:      string
   ago:       string
@@ -33,14 +49,12 @@ function getSalePoolPda(): PublicKey {
 function getSaleVaultPda(): PublicKey {
   return PublicKey.findProgramAddressSync([Buffer.from('sale_vault')], SALE_PROGRAM_ID)[0]
 }
-
 function shortAddr(pk: string): string {
   return `${pk.slice(0, 4)}...${pk.slice(-4)}`
 }
-
 function timeAgo(ts: number): string {
   const secs = Math.floor((Date.now() / 1000) - ts)
-  if (secs < 60)  return `${secs}s ago`
+  if (secs < 60)   return `${secs}s ago`
   if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
   if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
   return `${Math.floor(secs / 86400)}d ago`
@@ -48,24 +62,14 @@ function timeAgo(ts: number): string {
 
 export function useSale() {
   const { connection } = useConnection()
-  const anchorWallet = useAnchorWallet()
-  const { publicKey } = useWallet()
+  const { publicKey, sendTransaction } = useWallet()
 
-  const [pool, setPool] = useState<SalePoolData | null>(null)
+  const [pool,    setPool]    = useState<SalePoolData | null>(null)
   const [history, setHistory] = useState<TradeHistoryEntry[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [error,   setError]   = useState<string | null>(null)
 
-  const getProgram = useCallback(() => {
-    if (!anchorWallet) return null
-    const provider = new AnchorProvider(connection, anchorWallet, {
-      commitment: 'confirmed',
-      skipPreflight: false,
-      preflightCommitment: 'confirmed',
-    })
-    return new Program(IDL as any, provider)
-  }, [connection, anchorWallet])
-
+  // ── Fetch pool state ────────────────────────────────────────────────────────
   const fetchPool = useCallback(async () => {
     try {
       const dummyWallet = {
@@ -74,7 +78,7 @@ export function useSale() {
         signAllTransactions: async (txs: any[]) => txs,
       }
       const provider = new AnchorProvider(connection, dummyWallet as any, { commitment: 'confirmed' })
-      const program = new Program(IDL as any, provider)
+      const program   = new Program(IDL as any, provider)
 
       const [data, vaultLamports] = await Promise.all([
         (program.account as any).salePool.fetch(getSalePoolPda()),
@@ -83,14 +87,14 @@ export function useSale() {
 
       setPool({
         pricePerVend:    (data.priceLamports.toNumber() * VEND_LAMPORTS) / LAMPORTS_PER_SOL,
-        totalSold:       data.totalSold.toNumber() / VEND_LAMPORTS,
+        totalSold:       data.totalSold.toNumber()       / VEND_LAMPORTS,
         totalBoughtBack: data.totalBoughtBack.toNumber() / VEND_LAMPORTS,
         vaultBalance:    vaultLamports / LAMPORTS_PER_SOL,
         isActive:        data.isActive,
         treasury:        data.treasury,
       })
     } catch {
-      // RPC failed — set pool with known constants so UI still works
+      // Fallback to on-chain constants if RPC fails
       setPool(prev => prev ?? {
         pricePerVend:    (SALE_PRICE_LAMPORTS * VEND_LAMPORTS) / LAMPORTS_PER_SOL,
         totalSold:       0,
@@ -102,75 +106,63 @@ export function useSale() {
     }
   }, [connection])
 
-  // Получить историю сделок из on-chain логов
+  // ── Fetch on-chain trade history ────────────────────────────────────────────
   const fetchHistory = useCallback(async () => {
     try {
       const sigs = await connection.getSignaturesForAddress(SALE_PROGRAM_ID, { limit: 10 })
       if (!sigs.length) return
 
-      // Fetch in batches of 5 to avoid 429
-      const allTxs = []
+      const entries: TradeHistoryEntry[] = []
       for (let i = 0; i < sigs.length; i += 5) {
         const batch = sigs.slice(i, i + 5)
-        const txBatch = await connection.getParsedTransactions(
+        const txs   = await connection.getParsedTransactions(
           batch.map(s => s.signature),
           { maxSupportedTransactionVersion: 0, commitment: 'confirmed' }
         )
-        allTxs.push(...txBatch)
+        for (let j = 0; j < txs.length; j++) {
+          const tx  = txs[j]
+          const sig = batch[j]
+          if (!tx || tx.meta?.err) continue
+
+          const logs  = tx.meta?.logMessages ?? []
+          const isBuy  = logs.some(l => l.includes('Bought') && l.includes('raw VEND'))
+          const isSell = logs.some(l => l.includes('Sold')   && l.includes('raw VEND'))
+          if (!isBuy && !isSell) continue
+
+          const logLine = logs.find(l =>
+            (isBuy ? l.includes('Bought') : l.includes('Sold')) && l.includes('raw VEND')
+          )
+          if (!logLine) continue
+          const match = logLine.match(/(\d+) raw VEND for (\d+) lamports/)
+          if (!match) continue
+
+          const rawVend    = parseInt(match[1])
+          const lamports   = parseInt(match[2])
+          const amountVend = rawVend   / VEND_LAMPORTS
+          const amountSol  = lamports  / LAMPORTS_PER_SOL
+
+          const accountKeys = tx.transaction.message.accountKeys
+          const signerKey   = accountKeys[0]
+          const wallet = typeof signerKey === 'object' && 'pubkey' in signerKey
+            ? (signerKey as any).pubkey.toBase58()
+            : String(signerKey)
+
+          const ts   = tx.blockTime ?? 0
+          const date = new Date(ts * 1000)
+          entries.push({
+            type:      isBuy ? 'Buy' : 'Sell',
+            amount:    amountVend,
+            solAmount: amountSol,
+            wallet:    shortAddr(wallet),
+            signature: sig.signature,
+            time:      `${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`,
+            ago:       timeAgo(ts),
+          })
+        }
         if (i + 5 < sigs.length) await new Promise(r => setTimeout(r, 300))
       }
-      const txs = allTxs
-
-      const entries: TradeHistoryEntry[] = []
-
-      for (let i = 0; i < txs.length; i++) {
-        const tx = txs[i]
-        const sig = sigs[i]
-        if (!tx || tx.meta?.err) continue
-
-        const logs = tx.meta?.logMessages ?? []
-
-        // Определяем тип по log сообщению программы
-        const isBuy  = logs.some(l => l.includes('Bought') && l.includes('raw VEND'))
-        const isSell = logs.some(l => l.includes('Sold')   && l.includes('raw VEND'))
-        if (!isBuy && !isSell) continue
-
-        // Парсим количество из лога: "Bought 5000000 raw VEND for 5000000 lamports"
-        const logLine = logs.find(l => (isBuy ? l.includes('Bought') : l.includes('Sold')) && l.includes('raw VEND'))
-        if (!logLine) continue
-
-        const match = logLine.match(/(\d+) raw VEND for (\d+) lamports/)
-        if (!match) continue
-
-        const rawVend    = parseInt(match[1])
-        const lamports   = parseInt(match[2])
-        const amountVend = rawVend / VEND_LAMPORTS
-        const amountSol  = lamports / LAMPORTS_PER_SOL
-
-        // Кошелёк подписанта
-        const accountKeys = tx.transaction.message.accountKeys
-        const signerKey = accountKeys[0]
-        const wallet = typeof signerKey === 'object' && 'pubkey' in signerKey
-          ? (signerKey as any).pubkey.toBase58()
-          : String(signerKey)
-
-        const ts = tx.blockTime ?? 0
-        const date = new Date(ts * 1000)
-        const timeStr = `${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}:${String(date.getSeconds()).padStart(2,'0')}`
-
-        entries.push({
-          type:      isBuy ? 'Buy' : 'Sell',
-          amount:    amountVend,
-          solAmount: amountSol,
-          wallet:    shortAddr(wallet),
-          signature: sig.signature,
-          time:      timeStr,
-          ago:       timeAgo(ts),
-        })
-      }
-
       setHistory(entries)
-    } catch { /* RPC issues — не критично */ }
+    } catch { /* RPC issues — not critical */ }
   }, [connection])
 
   useEffect(() => {
@@ -178,32 +170,39 @@ export function useSale() {
     fetchHistory()
   }, [fetchPool, fetchHistory])
 
-  // Купить VEND токены
-  const buyTokens = useCallback(async (amountRaw: number) => {
+  // ── Buy VEND (raw instruction — bypasses Anchor client-side validation) ─────
+  const buyTokens = useCallback(async (amountVend: number) => {
     if (!publicKey) throw new Error('Wallet not connected')
-    const program = getProgram()
-    if (!program) throw new Error('Program not ready')
 
     setLoading(true)
     setError(null)
     try {
-      const rawAmount  = new BN(Math.floor(amountRaw * VEND_LAMPORTS))
-      const buyerAta   = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
-      const treasury   = pool?.treasury ?? SALE_TREASURY
-      const salePool   = getSalePoolPda()
-      const saleVault  = getSaleVaultPda()
+      const rawUnits  = Math.floor(amountVend * VEND_LAMPORTS)
+      const data      = Buffer.concat([BUY_DISC, u64le(rawUnits)])
+      const buyerAta  = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
+      const salePool  = getSalePoolPda()
+      const saleVault = getSaleVaultPda()
+      const treasury  = pool?.treasury ?? SALE_TREASURY
 
-      await (program.methods as any)
-        .buyTokens(rawAmount)
-        .accounts({
-          buyer:    publicKey,
-          salePool,
-          vendMint: VEND_MINT,
-          buyerAta,
-          treasury,
-          saleVault,
-        })
-        .rpc()
+      const ix = new TransactionInstruction({
+        programId: SALE_PROGRAM_ID,
+        keys: [
+          { pubkey: publicKey,                   isSigner: true,  isWritable: true  },
+          { pubkey: salePool,                    isSigner: false, isWritable: true  },
+          { pubkey: VEND_MINT,                   isSigner: false, isWritable: true  },
+          { pubkey: buyerAta,                    isSigner: false, isWritable: true  },
+          { pubkey: treasury,                    isSigner: false, isWritable: true  },
+          { pubkey: saleVault,                   isSigner: false, isWritable: true  },
+          { pubkey: TOKEN_PROGRAM_ID,            isSigner: false, isWritable: false },
+          { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+          { pubkey: SystemProgram.programId,     isSigner: false, isWritable: false },
+        ],
+        data,
+      })
+
+      const tx  = new Transaction().add(ix)
+      const sig = await sendTransaction(tx, connection, { skipPreflight: false })
+      await connection.confirmTransaction(sig, 'confirmed')
 
       await Promise.all([fetchPool(), fetchHistory()])
     } catch (e: any) {
@@ -212,32 +211,38 @@ export function useSale() {
     } finally {
       setLoading(false)
     }
-  }, [publicKey, pool, getProgram, fetchPool, fetchHistory])
+  }, [publicKey, pool, connection, sendTransaction, fetchPool, fetchHistory])
 
-  // Продать VEND токены
+  // ── Sell VEND (raw instruction) ─────────────────────────────────────────────
   const sellTokens = useCallback(async (amountVend: number) => {
     if (!publicKey) throw new Error('Wallet not connected')
-    const program = getProgram()
-    if (!program) throw new Error('Program not ready')
 
     setLoading(true)
     setError(null)
     try {
-      const rawAmount = new BN(Math.floor(amountVend * VEND_LAMPORTS))
+      const rawUnits  = Math.floor(amountVend * VEND_LAMPORTS)
+      const data      = Buffer.concat([SELL_DISC, u64le(rawUnits)])
       const sellerAta = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
       const salePool  = getSalePoolPda()
       const saleVault = getSaleVaultPda()
 
-      await (program.methods as any)
-        .sellTokens(rawAmount)
-        .accounts({
-          seller:    publicKey,
-          salePool,
-          vendMint:  VEND_MINT,
-          sellerAta,
-          saleVault,
-        })
-        .rpc()
+      const ix = new TransactionInstruction({
+        programId: SALE_PROGRAM_ID,
+        keys: [
+          { pubkey: publicKey,               isSigner: true,  isWritable: true  },
+          { pubkey: salePool,                isSigner: false, isWritable: true  },
+          { pubkey: VEND_MINT,               isSigner: false, isWritable: true  },
+          { pubkey: sellerAta,               isSigner: false, isWritable: true  },
+          { pubkey: saleVault,               isSigner: false, isWritable: true  },
+          { pubkey: TOKEN_PROGRAM_ID,        isSigner: false, isWritable: false },
+          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+        ],
+        data,
+      })
+
+      const tx  = new Transaction().add(ix)
+      const sig = await sendTransaction(tx, connection, { skipPreflight: false })
+      await connection.confirmTransaction(sig, 'confirmed')
 
       await Promise.all([fetchPool(), fetchHistory()])
     } catch (e: any) {
@@ -246,7 +251,7 @@ export function useSale() {
     } finally {
       setLoading(false)
     }
-  }, [publicKey, getProgram, fetchPool, fetchHistory])
+  }, [publicKey, connection, sendTransaction, fetchPool, fetchHistory])
 
   return { pool, history, loading, error, buyTokens, sellTokens, refresh: fetchPool }
 }
