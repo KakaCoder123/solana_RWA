@@ -187,18 +187,21 @@ export function useSale() {
     setLoading(true)
     setError(null)
     try {
-      const rawAmount = new BN(Math.floor(amountRaw * VEND_LAMPORTS))
-      const buyerAta  = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
-      // Use cached pool treasury if available, else fall back to known constant
-      const treasury  = pool?.treasury ?? SALE_TREASURY
+      const rawAmount  = new BN(Math.floor(amountRaw * VEND_LAMPORTS))
+      const buyerAta   = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
+      const treasury   = pool?.treasury ?? SALE_TREASURY
+      const salePool   = getSalePoolPda()
+      const saleVault  = getSaleVaultPda()
 
       await (program.methods as any)
         .buyTokens(rawAmount)
         .accounts({
           buyer:    publicKey,
+          salePool,
           vendMint: VEND_MINT,
-          buyerAta: buyerAta,
+          buyerAta,
           treasury,
+          saleVault,
         })
         .rpc()
 
@@ -220,15 +223,19 @@ export function useSale() {
     setLoading(true)
     setError(null)
     try {
-      const rawAmount  = new BN(Math.floor(amountVend * VEND_LAMPORTS))
-      const sellerAta  = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
+      const rawAmount = new BN(Math.floor(amountVend * VEND_LAMPORTS))
+      const sellerAta = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
+      const salePool  = getSalePoolPda()
+      const saleVault = getSaleVaultPda()
 
       await (program.methods as any)
         .sellTokens(rawAmount)
         .accounts({
           seller:    publicKey,
+          salePool,
           vendMint:  VEND_MINT,
-          sellerAta: sellerAta,
+          sellerAta,
+          saleVault,
         })
         .rpc()
 

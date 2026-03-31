@@ -5,8 +5,8 @@ export const SALE_PROGRAM_ID = new PublicKey('GodxM9254JxPRsmLvDBxuyhjwdKNhccccJ
 export const VEND_MINT = new PublicKey('4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B')
 // Treasury = deployer wallet (set during initialize_sale)
 export const SALE_TREASURY = new PublicKey('2Xxc4uMPpfGJJtxEXV2SfP34tQ8n56mYZEw26n79LPaw')
-// On-chain price: 1000 lamports per raw unit → 1 VEND (10^6 raw) = 1 SOL
-export const SALE_PRICE_LAMPORTS = 1000
+// On-chain price: 1 lamport per raw unit → 1 VEND (10^6 raw) = 0.001 SOL
+export const SALE_PRICE_LAMPORTS = 1
 
 export const VEND_DECIMALS = 6
 export const VEND_LAMPORTS = 10 ** VEND_DECIMALS
