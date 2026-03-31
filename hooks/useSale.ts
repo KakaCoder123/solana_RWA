@@ -174,8 +174,17 @@ export function useSale() {
     fetchHistory()
   }, [fetchPool, fetchHistory])
 
-  // ── Buy VEND (raw instruction — bypasses Anchor client-side validation) ─────
-  const buyTokens = useCallback(async (amountVend: number) => {
+  // ── Shared: send TX and wait for confirmation ────────────────────────────────
+  const sendAndConfirm = useCallback(async (ix: TransactionInstruction): Promise<string> => {
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
+    const tx = new Transaction({ blockhash, lastValidBlockHeight, feePayer: publicKey! }).add(ix)
+    const sig = await sendTransaction(tx, connection, { skipPreflight: false })
+    await connection.confirmTransaction({ signature: sig, blockhash, lastValidBlockHeight }, 'confirmed')
+    return sig
+  }, [connection, publicKey, sendTransaction])
+
+  // ── Buy VEND ─────────────────────────────────────────────────────────────────
+  const buyTokens = useCallback(async (amountVend: number): Promise<string> => {
     if (!publicKey) throw new Error('Wallet not connected')
 
     setLoading(true)
@@ -185,83 +194,72 @@ export function useSale() {
       const amtBytes  = u64le(rawUnits)
       const merged    = new Uint8Array(BUY_DISC.length + amtBytes.length)
       merged.set(BUY_DISC, 0); merged.set(amtBytes, BUY_DISC.length)
-      const data      = Buffer.from(merged)
-      const buyerAta  = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
-      const salePool  = getSalePoolPda()
-      const saleVault = getSaleVaultPda()
-      const treasury  = pool?.treasury ?? SALE_TREASURY
 
       const ix = new TransactionInstruction({
         programId: SALE_PROGRAM_ID,
         keys: [
-          { pubkey: publicKey,                   isSigner: true,  isWritable: true  },
-          { pubkey: salePool,                    isSigner: false, isWritable: true  },
-          { pubkey: VEND_MINT,                   isSigner: false, isWritable: true  },
-          { pubkey: buyerAta,                    isSigner: false, isWritable: true  },
-          { pubkey: treasury,                    isSigner: false, isWritable: true  },
-          { pubkey: saleVault,                   isSigner: false, isWritable: true  },
-          { pubkey: TOKEN_PROGRAM_ID,            isSigner: false, isWritable: false },
-          { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-          { pubkey: SystemProgram.programId,     isSigner: false, isWritable: false },
+          { pubkey: publicKey,                                          isSigner: true,  isWritable: true  },
+          { pubkey: getSalePoolPda(),                                   isSigner: false, isWritable: true  },
+          { pubkey: VEND_MINT,                                          isSigner: false, isWritable: true  },
+          { pubkey: getAssociatedTokenAddressSync(VEND_MINT, publicKey), isSigner: false, isWritable: true  },
+          { pubkey: pool?.treasury ?? SALE_TREASURY,                    isSigner: false, isWritable: true  },
+          { pubkey: getSaleVaultPda(),                                  isSigner: false, isWritable: true  },
+          { pubkey: TOKEN_PROGRAM_ID,                                   isSigner: false, isWritable: false },
+          { pubkey: ASSOCIATED_TOKEN_PROGRAM_ID,                        isSigner: false, isWritable: false },
+          { pubkey: SystemProgram.programId,                            isSigner: false, isWritable: false },
         ],
-        data,
+        data: Buffer.from(merged),
       })
 
-      const tx  = new Transaction().add(ix)
-      const sig = await sendTransaction(tx, connection, { skipPreflight: false })
-      await connection.confirmTransaction(sig, 'confirmed')
-
-      await Promise.all([fetchPool(), fetchHistory()])
+      const sig = await sendAndConfirm(ix)
+      fetchPool(); fetchHistory()
+      return sig
     } catch (e: any) {
-      setError(e.message)
-      throw e
+      const msg = e?.message ?? String(e)
+      setError(msg)
+      throw new Error(msg)
     } finally {
       setLoading(false)
     }
-  }, [publicKey, pool, connection, sendTransaction, fetchPool, fetchHistory])
+  }, [publicKey, pool, sendAndConfirm, fetchPool, fetchHistory])
 
-  // ── Sell VEND (raw instruction) ─────────────────────────────────────────────
-  const sellTokens = useCallback(async (amountVend: number) => {
+  // ── Sell VEND ────────────────────────────────────────────────────────────────
+  const sellTokens = useCallback(async (amountVend: number): Promise<string> => {
     if (!publicKey) throw new Error('Wallet not connected')
 
     setLoading(true)
     setError(null)
     try {
-      const rawUnits  = Math.floor(amountVend * VEND_LAMPORTS)
-      const amtBytes  = u64le(rawUnits)
-      const merged    = new Uint8Array(SELL_DISC.length + amtBytes.length)
+      const rawUnits = Math.floor(amountVend * VEND_LAMPORTS)
+      const amtBytes = u64le(rawUnits)
+      const merged   = new Uint8Array(SELL_DISC.length + amtBytes.length)
       merged.set(SELL_DISC, 0); merged.set(amtBytes, SELL_DISC.length)
-      const data      = Buffer.from(merged)
-      const sellerAta = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
-      const salePool  = getSalePoolPda()
-      const saleVault = getSaleVaultPda()
 
       const ix = new TransactionInstruction({
         programId: SALE_PROGRAM_ID,
         keys: [
-          { pubkey: publicKey,               isSigner: true,  isWritable: true  },
-          { pubkey: salePool,                isSigner: false, isWritable: true  },
-          { pubkey: VEND_MINT,               isSigner: false, isWritable: true  },
-          { pubkey: sellerAta,               isSigner: false, isWritable: true  },
-          { pubkey: saleVault,               isSigner: false, isWritable: true  },
-          { pubkey: TOKEN_PROGRAM_ID,        isSigner: false, isWritable: false },
-          { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+          { pubkey: publicKey,                                           isSigner: true,  isWritable: true  },
+          { pubkey: getSalePoolPda(),                                    isSigner: false, isWritable: true  },
+          { pubkey: VEND_MINT,                                           isSigner: false, isWritable: true  },
+          { pubkey: getAssociatedTokenAddressSync(VEND_MINT, publicKey), isSigner: false, isWritable: true  },
+          { pubkey: getSaleVaultPda(),                                   isSigner: false, isWritable: true  },
+          { pubkey: TOKEN_PROGRAM_ID,                                    isSigner: false, isWritable: false },
+          { pubkey: SystemProgram.programId,                             isSigner: false, isWritable: false },
         ],
-        data,
+        data: Buffer.from(merged),
       })
 
-      const tx  = new Transaction().add(ix)
-      const sig = await sendTransaction(tx, connection, { skipPreflight: false })
-      await connection.confirmTransaction(sig, 'confirmed')
-
-      await Promise.all([fetchPool(), fetchHistory()])
+      const sig = await sendAndConfirm(ix)
+      fetchPool(); fetchHistory()
+      return sig
     } catch (e: any) {
-      setError(e.message)
-      throw e
+      const msg = e?.message ?? String(e)
+      setError(msg)
+      throw new Error(msg)
     } finally {
       setLoading(false)
     }
-  }, [publicKey, connection, sendTransaction, fetchPool, fetchHistory])
+  }, [publicKey, sendAndConfirm, fetchPool, fetchHistory])
 
   return { pool, history, loading, error, buyTokens, sellTokens, refresh: fetchPool }
 }

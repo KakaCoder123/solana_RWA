@@ -163,12 +163,14 @@ export default function TradePage() {
     if (!vendAmt) return
     setBuying(true)
     try {
-      await buyTokens(vendAmt)
+      const sig = await buyTokens(vendAmt)
+      // Give RPC 2s to index the new token account before querying balance
+      await new Promise(r => setTimeout(r, 2000))
       await fetchBalances()
-      showToast(`Bought ${vendReceive} VEND for ${solAmt} SOL`, true)
+      showToast(`✓ Bought ${vendReceive} VEND — tx: ${sig.slice(0, 8)}...`, true)
       setSolAmt('')
     } catch (e: any) {
-      showToast(e?.message?.slice(0, 80) ?? 'Transaction failed', false)
+      showToast(e?.message?.slice(0, 100) ?? 'Transaction failed', false)
     } finally { setBuying(false) }
   }
 
@@ -177,12 +179,13 @@ export default function TradePage() {
     if (!amt || selling) return
     setSelling(true)
     try {
-      await sellTokens(amt)
+      const sig = await sellTokens(amt)
+      await new Promise(r => setTimeout(r, 2000))
       await fetchBalances()
-      showToast(`Sold ${vendSell} VEND for ${solReceive} SOL`, true)
+      showToast(`✓ Sold ${vendSell} VEND — tx: ${sig.slice(0, 8)}...`, true)
       setVendSell('')
     } catch (e: any) {
-      showToast(e?.message?.slice(0, 80) ?? 'Transaction failed', false)
+      showToast(e?.message?.slice(0, 100) ?? 'Transaction failed', false)
     } finally { setSelling(false) }
   }
 
