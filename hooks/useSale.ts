@@ -15,13 +15,17 @@ import IDL from '../lib/idl/vend_sale.json'
 import { SALE_PROGRAM_ID, VEND_MINT, VEND_LAMPORTS, SALE_TREASURY, SALE_PRICE_LAMPORTS } from '../lib/anchor'
 
 // ── Precomputed discriminators (sha256("global:{ix}")[0..8]) ──────────────────
-const BUY_DISC  = Buffer.from([189, 21, 230, 133, 247,   2, 110,  42])
-const SELL_DISC = Buffer.from([114, 242,  25,  12,  62, 126,  92,   2])
+const BUY_DISC  = new Uint8Array([189, 21, 230, 133, 247,   2, 110,  42])
+const SELL_DISC = new Uint8Array([114, 242,  25,  12,  62, 126,  92,   2])
 
-function u64le(n: number): Buffer {
-  const buf = Buffer.alloc(8)
-  buf.writeBigUInt64LE(BigInt(Math.floor(n)))
-  return buf
+function u64le(n: number): Uint8Array {
+  const buf = new ArrayBuffer(8)
+  const view = new DataView(buf)
+  const lo = n >>> 0
+  const hi = Math.floor(n / 0x100000000) >>> 0
+  view.setUint32(0, lo, true)
+  view.setUint32(4, hi, true)
+  return new Uint8Array(buf)
 }
 
 export interface SalePoolData {
@@ -178,7 +182,10 @@ export function useSale() {
     setError(null)
     try {
       const rawUnits  = Math.floor(amountVend * VEND_LAMPORTS)
-      const data      = Buffer.concat([BUY_DISC, u64le(rawUnits)])
+      const amtBytes  = u64le(rawUnits)
+      const merged    = new Uint8Array(BUY_DISC.length + amtBytes.length)
+      merged.set(BUY_DISC, 0); merged.set(amtBytes, BUY_DISC.length)
+      const data      = Buffer.from(merged)
       const buyerAta  = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
       const salePool  = getSalePoolPda()
       const saleVault = getSaleVaultPda()
@@ -221,7 +228,10 @@ export function useSale() {
     setError(null)
     try {
       const rawUnits  = Math.floor(amountVend * VEND_LAMPORTS)
-      const data      = Buffer.concat([SELL_DISC, u64le(rawUnits)])
+      const amtBytes  = u64le(rawUnits)
+      const merged    = new Uint8Array(SELL_DISC.length + amtBytes.length)
+      merged.set(SELL_DISC, 0); merged.set(amtBytes, SELL_DISC.length)
+      const data      = Buffer.from(merged)
       const sellerAta = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
       const salePool  = getSalePoolPda()
       const saleVault = getSaleVaultPda()
