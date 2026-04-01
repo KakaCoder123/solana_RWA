@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useWallet, useConnection } from '@solana/wallet-adapter-react'
 import { PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js'
-import { getAssociatedTokenAddressSync } from '@solana/spl-token'
 
 export interface WalletAssets {
   solBalance: number      // SOL
@@ -34,18 +33,30 @@ export function useWalletData(vendMint: PublicKey | null) {
       const lamports = await connection.getBalance(publicKey)
       const solBalance = lamports / LAMPORTS_PER_SOL
 
-      // VEND balance
+      // VEND balance — use getParsedTokenAccountsByOwner
       let vendBalance = 0
       if (vendMint) {
         try {
-          const ata = getAssociatedTokenAddressSync(vendMint, publicKey)
-          const info = await connection.getTokenAccountBalance(ata)
-          vendBalance = info.value.uiAmount ?? 0
-        } catch {
+          console.log('[useWalletData] fetching VEND for', publicKey.toBase58(), 'mint:', vendMint.toBase58())
+          const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+            publicKey,
+            { mint: vendMint }
+          )
+          console.log('[useWalletData] token accounts:', tokenAccounts.value.length)
+          if (tokenAccounts.value.length > 0) {
+            const data = (tokenAccounts.value[0].account.data as any)?.parsed?.info?.tokenAmount
+            console.log('[useWalletData] tokenAmount data:', data)
+            vendBalance = data?.uiAmount ?? 0
+          }
+        } catch (e) {
+          console.warn('[useWalletData] VEND fetch failed:', e)
           vendBalance = 0
         }
+      } else {
+        console.warn('[useWalletData] vendMint is null/undefined — skipping VEND fetch')
       }
 
+      console.log('[useWalletData] setAssets → SOL:', solBalance, 'VEND:', vendBalance)
       setAssets({ solBalance, vendBalance })
 
       // Recent transactions (last 5)

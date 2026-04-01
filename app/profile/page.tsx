@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import NavBar from '@/components/NavBar'
 import { useStaking } from '@/hooks/useStaking'
 import { useWalletData } from '@/hooks/useWalletData'
+import { VEND_MINT } from '@/lib/anchor'
 
 // ── Mock chart data (no historical on-chain data yet) ──────────────
 function genChart(points: number, start: number): number[] {
@@ -106,7 +107,7 @@ export default function ProfilePage() {
   const [copied, setCopied] = useState(false)
 
   const { pool, userStake, unstakeRequest, apyPercent } = useStaking()
-  const { assets, recentTxs, loading: walletLoading } = useWalletData(pool?.vendMint ?? null)
+  const { assets, recentTxs, loading: walletLoading } = useWalletData(VEND_MINT)
 
   useEffect(() => { setMounted(true) }, [])
   useEffect(() => {

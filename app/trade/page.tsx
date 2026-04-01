@@ -148,8 +148,8 @@ export default function TradePage() {
     setBuying(true)
     try {
       const sig = await buyTokens(vendAmt)
-      // Give RPC 2s to index the new token account before querying balance
-      await new Promise(r => setTimeout(r, 2000))
+      // Give RPC 4s to index the new token account before querying balance
+      await new Promise(r => setTimeout(r, 4000))
       await refreshBalances()
       showToast(`✓ Bought ${vendReceive} VEND — tx: ${sig.slice(0, 8)}...`, true)
       setSolAmt('')

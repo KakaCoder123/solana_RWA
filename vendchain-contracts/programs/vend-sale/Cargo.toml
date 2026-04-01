@@ -1,0 +1,12 @@
+[package]
+name = "vend-sale"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "vend_sale"
+
+[dependencies]
+anchor-lang = { version = "0.32.0", features = ["init-if-needed"] }
+anchor-spl  = { version = "0.32.0", features = ["associated_token", "token"] }
