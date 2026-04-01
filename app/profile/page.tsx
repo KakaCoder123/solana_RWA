@@ -106,7 +106,7 @@ export default function ProfilePage() {
   const [period, setPeriod] = useState<'30D' | '90D' | '1Y'>('30D')
   const [copied, setCopied] = useState(false)
 
-  const { pool, userStake, unstakeRequest, apyPercent } = useStaking()
+  const { userStake, unstakeRequest, apyPercent } = useStaking()
   const { assets, recentTxs, loading: walletLoading } = useWalletData(VEND_MINT)
 
   useEffect(() => { setMounted(true) }, [])

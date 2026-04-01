@@ -189,3 +189,8 @@ pub fn fund_rewards(ctx: Context<FundRewards>, amount: u64) -> Result<()> {
     msg!("Reward pool funded: {} VEND", amount);
     Ok(())
 }
+
+pub fn close_staking_pool(ctx: Context<crate::CloseStakingPool>) -> Result<()> {
+    msg!("Staking pool closed by authority: {}", ctx.accounts.authority.key());
+    Ok(())
+}

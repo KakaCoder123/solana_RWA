@@ -1,0 +1,70 @@
+name: Build & Deploy Solana Program
+
+on:
+  workflow_dispatch:   # запуск вручную с GitHub UI
+  push:
+    paths:
+      - 'vendchain-contracts/programs/**'   # автозапуск при изменении программы
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+
+      - name: Install Rust + SBF toolchain
+        run: |
+          curl https://sh.rustup.rs -sSf | sh -s -- -y
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Install Anchor CLI
+        run: |
+          cargo install --git https://github.com/coral-xyz/anchor avm --force
+          avm install 0.32.0
+          avm use 0.32.0
+
+      - name: Set up deployer keypair
+        run: |
+          mkdir -p ~/.config/solana
+          echo '${{ secrets.DEPLOYER_KEYPAIR }}' > ~/.config/solana/id.json
+          solana config set --url devnet
+          solana config set --keypair ~/.config/solana/id.json
+          echo "Deployer: $(solana address)"
+          echo "Balance: $(solana balance)"
+
+      - name: Build program
+        working-directory: vendchain-contracts
+        run: anchor build
+
+      - name: Deploy program
+        working-directory: vendchain-contracts
+        run: |
+          anchor deploy --program-name vendchain_contracts --provider.cluster devnet
+          echo "✅ Program deployed: 9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK"
+
+      - name: Update IDL on-chain
+        working-directory: vendchain-contracts
+        run: |
+          anchor idl upgrade --filepath target/idl/vendchain_contracts.json \
+            --provider.cluster devnet \
+            9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK || true
+          echo "✅ IDL updated"
+
+      - name: Copy new IDL to frontend
+        run: |
+          cp vendchain-contracts/target/idl/vendchain_contracts.json \
+             lib/idl/vendchain_contracts.json
+          echo "✅ Frontend IDL updated"
+
+      - name: Commit updated IDL
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lib/idl/vendchain_contracts.json
+          git diff --staged --quiet || git commit -m "ci: update IDL after program deploy"
+          git push || true

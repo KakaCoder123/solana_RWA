@@ -41,6 +41,10 @@ pub mod vendchain_contracts {
     pub fn fund_rewards(ctx: Context<FundRewards>, amount: u64) -> Result<()> {
         logic::fund_rewards(ctx, amount)
     }
+
+    pub fn close_staking_pool(ctx: Context<CloseStakingPool>) -> Result<()> {
+        logic::close_staking_pool(ctx)
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -269,4 +273,21 @@ pub struct FundRewards<'info> {
     pub funder_token_account: Account<'info, TokenAccount>,
 
     pub token_program: Program<'info, Token>,
+}
+
+#[derive(Accounts)]
+pub struct CloseStakingPool<'info> {
+    #[account(
+        mut,
+        constraint = authority.key() == staking_pool.authority @ VendError::InvalidOwner,
+    )]
+    pub authority: Signer<'info>,
+
+    #[account(
+        mut,
+        close = authority,
+        seeds = [b"staking_pool"],
+        bump = staking_pool.bump,
+    )]
+    pub staking_pool: Account<'info, StakingPool>,
 }
