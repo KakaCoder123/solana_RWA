@@ -44,14 +44,19 @@ jobs:
       - name: Deploy program
         working-directory: vendchain-contracts
         run: |
-          anchor deploy --program-name vendchain_contracts --provider.cluster devnet
+          anchor deploy \
+            --program-name vendchain_contracts \
+            --provider.cluster devnet \
+            --provider.wallet ~/.config/solana/id.json
           echo "✅ Program deployed: 9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK"
 
       - name: Update IDL on-chain
         working-directory: vendchain-contracts
         run: |
-          anchor idl upgrade --filepath target/idl/vendchain_contracts.json \
+          anchor idl upgrade \
+            --filepath target/idl/vendchain_contracts.json \
             --provider.cluster devnet \
+            --provider.wallet ~/.config/solana/id.json \
             9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK || true
           echo "✅ IDL updated"
 
