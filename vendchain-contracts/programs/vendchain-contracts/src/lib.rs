@@ -9,7 +9,7 @@ use state::*;
 
 mod logic;
 
-declare_id!("9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK");
+declare_id!("54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV");
 
 #[program]
 pub mod vendchain_contracts {

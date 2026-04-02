@@ -57,7 +57,7 @@ jobs:
             --program-name vendchain_contracts \
             --provider.cluster devnet \
             --provider.wallet ~/.config/solana/id.json
-          echo "✅ Program deployed: 9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK"
+          echo "✅ Program deployed: 54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV"
 
       - name: Update IDL on-chain
         working-directory: vendchain-contracts
@@ -66,7 +66,13 @@ jobs:
             --filepath target/idl/vendchain_contracts.json \
             --provider.cluster devnet \
             --provider.wallet ~/.config/solana/id.json \
-            9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK || true
+            54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV \
+            || anchor idl init \
+              --filepath target/idl/vendchain_contracts.json \
+              --provider.cluster devnet \
+              --provider.wallet ~/.config/solana/id.json \
+              54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV \
+            || true
           echo "✅ IDL updated"
 
       - name: Copy new IDL to frontend

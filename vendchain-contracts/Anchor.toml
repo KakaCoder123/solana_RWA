@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-vendchain_contracts = "9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK"
+vendchain_contracts = "54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV"
 
 [programs.devnet]
-vendchain_contracts = "9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK"
+vendchain_contracts = "54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV"
 
 [registry]
 url = "https://api.apr.dev"

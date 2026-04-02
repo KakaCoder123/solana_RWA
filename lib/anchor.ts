@@ -1,6 +1,6 @@
 import { PublicKey } from '@solana/web3.js'
 
-export const PROGRAM_ID = new PublicKey('9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK')
+export const PROGRAM_ID = new PublicKey('54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV')
 export const SALE_PROGRAM_ID = new PublicKey('GodxM9254JxPRsmLvDBxuyhjwdKNhccccJrCj1UFdEdB')
 export const VEND_MINT = new PublicKey('4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B')
 // Treasury = deployer wallet (set during initialize_sale)
