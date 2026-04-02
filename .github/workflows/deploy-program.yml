@@ -37,6 +37,12 @@ jobs:
           echo "Deployer: $(solana address)"
           echo "Balance: $(solana balance)"
 
+      - name: Set up program keypair
+        run: |
+          mkdir -p vendchain-contracts/target/deploy
+          echo '${{ secrets.PROGRAM_KEYPAIR }}' > vendchain-contracts/target/deploy/vendchain_contracts-keypair.json
+          echo "Program keypair set"
+
       - name: Airdrop SOL for deploy
         run: |
           HELIUS="https://devnet.helius-rpc.com/?api-key=${{ secrets.HELIUS_API_KEY }}"
