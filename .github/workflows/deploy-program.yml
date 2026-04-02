@@ -39,9 +39,10 @@ jobs:
 
       - name: Airdrop SOL for deploy
         run: |
-          solana airdrop 2 --url devnet || true
+          HELIUS="https://devnet.helius-rpc.com/?api-key=${{ secrets.HELIUS_API_KEY }}"
+          solana airdrop 2 --url "$HELIUS" || solana airdrop 2 --url devnet || true
           sleep 5
-          solana airdrop 2 --url devnet || true
+          solana airdrop 2 --url "$HELIUS" || solana airdrop 2 --url devnet || true
           sleep 5
           echo "Balance after airdrop: $(solana balance)"
 
