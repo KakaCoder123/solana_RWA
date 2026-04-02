@@ -68,21 +68,21 @@ pub struct InitializeStakingPool<'info> {
     pub staking_pool: Account<'info, StakingPool>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = authority,
         token::mint = vend_mint,
         token::authority = staking_pool,
-        seeds = [b"stake_vault"],
+        seeds = [b"stake_vault_v2"],
         bump,
     )]
     pub stake_vault: Account<'info, TokenAccount>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = authority,
         token::mint = vend_mint,
         token::authority = staking_pool,
-        seeds = [b"reward_vault"],
+        seeds = [b"reward_vault_v2"],
         bump,
     )]
     pub reward_vault: Account<'info, TokenAccount>,
@@ -105,7 +105,7 @@ pub struct Stake<'info> {
     pub staking_pool: Account<'info, StakingPool>,
 
     #[account(
-        init_if_needed,
+        init,
         payer = owner,
         space = UserStake::LEN,
         seeds = [b"user_stake", owner.key().as_ref()],
@@ -115,7 +115,7 @@ pub struct Stake<'info> {
 
     #[account(
         mut,
-        seeds = [b"stake_vault"],
+        seeds = [b"stake_vault_v2"],
         bump = staking_pool.stake_vault_bump,
         token::mint = staking_pool.vend_mint,
         token::authority = staking_pool,
@@ -188,7 +188,7 @@ pub struct Withdraw<'info> {
 
     #[account(
         mut,
-        seeds = [b"stake_vault"],
+        seeds = [b"stake_vault_v2"],
         bump = staking_pool.stake_vault_bump,
         token::mint = staking_pool.vend_mint,
         token::authority = staking_pool,
@@ -227,7 +227,7 @@ pub struct ClaimRewards<'info> {
 
     #[account(
         mut,
-        seeds = [b"reward_vault"],
+        seeds = [b"reward_vault_v2"],
         bump = staking_pool.reward_vault_bump,
         token::mint = staking_pool.vend_mint,
         token::authority = staking_pool,
@@ -258,7 +258,7 @@ pub struct FundRewards<'info> {
 
     #[account(
         mut,
-        seeds = [b"reward_vault"],
+        seeds = [b"reward_vault_v2"],
         bump = staking_pool.reward_vault_bump,
         token::mint = staking_pool.vend_mint,
         token::authority = staking_pool,
