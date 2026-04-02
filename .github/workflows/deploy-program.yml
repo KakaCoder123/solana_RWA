@@ -66,20 +66,15 @@ jobs:
           echo "✅ Program deployed: 54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV"
 
       - name: Update IDL on-chain
+        continue-on-error: true
         working-directory: vendchain-contracts
         run: |
           anchor idl upgrade \
             --filepath target/idl/vendchain_contracts.json \
             --provider.cluster devnet \
             --provider.wallet ~/.config/solana/id.json \
-            54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV \
-            || anchor idl init \
-              --filepath target/idl/vendchain_contracts.json \
-              --provider.cluster devnet \
-              --provider.wallet ~/.config/solana/id.json \
-              54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV \
-            || true
-          echo "✅ IDL updated"
+            9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK || true
+          echo "✅ IDL step done (errors ignored)"
 
       - name: Copy new IDL to frontend
         run: |
