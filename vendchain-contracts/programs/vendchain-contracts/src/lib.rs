@@ -68,7 +68,7 @@ pub struct InitializeStakingPool<'info> {
     pub staking_pool: Account<'info, StakingPool>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = authority,
         token::mint = vend_mint,
         token::authority = staking_pool,
@@ -78,7 +78,7 @@ pub struct InitializeStakingPool<'info> {
     pub stake_vault: Account<'info, TokenAccount>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = authority,
         token::mint = vend_mint,
         token::authority = staking_pool,
