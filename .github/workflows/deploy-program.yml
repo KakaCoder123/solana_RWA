@@ -37,6 +37,14 @@ jobs:
           echo "Deployer: $(solana address)"
           echo "Balance: $(solana balance)"
 
+      - name: Airdrop SOL for deploy
+        run: |
+          solana airdrop 2 --url devnet || true
+          sleep 5
+          solana airdrop 2 --url devnet || true
+          sleep 5
+          echo "Balance after airdrop: $(solana balance)"
+
       - name: Build program
         working-directory: vendchain-contracts
         run: anchor build
