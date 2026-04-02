@@ -6,7 +6,7 @@
  *   npx tsx scripts/reinit-staking-pool.ts
  */
 import {
-  Connection, Keypair, PublicKey, Transaction,
+  Connection, Keypair, PublicKey,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { AnchorProvider, Program, BN, Wallet } from "@coral-xyz/anchor";
@@ -42,18 +42,24 @@ async function main() {
 
   const [poolPda] = PublicKey.findProgramAddressSync([Buffer.from("staking_pool")], program.programId);
 
-  // ── Step 1: Close old pool ────────────────────────────────────────
+  console.log("Program ID:", program.programId.toBase58());
+  console.log("New pool PDA:", poolPda.toBase58());
+
+  // ── Step 1: Check if pool already exists on NEW program ──────────
   const existing = await conn.getAccountInfo(poolPda);
   if (existing) {
-    console.log("Step 1: Closing old staking pool...");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const tx = await (program.methods as any).closeStakingPool()
-      .accounts({ authority: payer.publicKey })
-      .transaction();
-    const sig = await sendAndConfirmTransaction(conn, tx, [payer]);
-    console.log("✅ Old pool closed:", sig);
+    console.log("Step 1: Pool already exists on new program.");
+    // Check which mint it uses
+    const acc = await (program.account as any).stakingPool.fetch(poolPda);
+    console.log("  vendMint:", acc.vendMint.toBase58());
+    if (acc.vendMint.toBase58() === VEND_MINT.toBase58()) {
+      console.log("✅ Already using correct mint! Nothing to do.");
+      return;
+    }
+    console.log("  Wrong mint — need to reinit. Please close pool first.");
+    return;
   } else {
-    console.log("Step 1: No existing pool found, skipping close.");
+    console.log("Step 1: No pool on new program, proceeding to init.");
   }
 
   // ── Step 2: Initialize new pool with correct mint ─────────────────

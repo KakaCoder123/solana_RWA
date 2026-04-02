@@ -1,10 +1,11 @@
 {
-  "address": "9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK",
+  "address": "54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV",
   "metadata": {
     "name": "vendchain_contracts",
     "version": "0.1.0",
     "spec": "0.1.0",
-    "description": "Created with Anchor"
+    "description": "Created with Anchor",
+    "address": "54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV"
   },
   "instructions": [
     {
