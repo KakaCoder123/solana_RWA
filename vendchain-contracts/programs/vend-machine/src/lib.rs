@@ -43,11 +43,6 @@ pub mod vend_machine {
     pub fn record_sale(ctx: Context<RecordSale>, amount_lamports: u64) -> Result<()> {
         logic::record_sale(ctx, amount_lamports)
     }
-
-    /// Обновить статус машины (0=ONLINE, 1=OFFLINE, 2=MAINTENANCE)
-    pub fn update_status(ctx: Context<ToggleMachine>, status: u8) -> Result<()> {
-        logic::update_status(ctx, status)
-    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
