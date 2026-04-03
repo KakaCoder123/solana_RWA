@@ -44,9 +44,9 @@ pub mod vend_machine {
         logic::record_sale(ctx, amount_lamports)
     }
 
-    /// Включить/выключить машину
-    pub fn toggle_machine(ctx: Context<ToggleMachine>, is_active: bool) -> Result<()> {
-        logic::toggle_machine(ctx, is_active)
+    /// Обновить статус машины (0=ONLINE, 1=OFFLINE, 2=MAINTENANCE)
+    pub fn update_status(ctx: Context<ToggleMachine>, status: u8) -> Result<()> {
+        logic::update_status(ctx, status)
     }
 }
 
@@ -112,7 +112,7 @@ pub struct RecordSale<'info> {
         mut,
         seeds = [b"machine", machine.machine_id.as_ref()],
         bump = machine.bump,
-        constraint = machine.is_active @ MachineError::MachineNotActive,
+        constraint = machine.status == 0 @ MachineError::MachineNotActive,
     )]
     pub machine: Account<'info, MachineAccount>,
 }
