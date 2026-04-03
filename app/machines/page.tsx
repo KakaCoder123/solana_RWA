@@ -4,166 +4,19 @@ import { useState, useEffect } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useRouter } from 'next/navigation'
 import NavBar from '../../components/NavBar'
+import { useMachines, type MachineStatus, type Machine } from '../../hooks/useMachines'
 
-type MachineStatus = 'ONLINE' | 'OFFLINE' | 'MAINTENANCE'
-
-interface Machine {
-  id: string
-  name: string
-  city: string
-  country: string
-  status: MachineStatus
-  dailyAvg: number
-  today: number
-  uptime: number
-  mx: number
-  my: number
-  topProducts: { name: string; revenue: number }[]
-  weekRevenue: number[]
+// Координаты на карте для каждой машины (фиксированные, не on-chain)
+const MAP_POS: Record<string, { mx: number; my: number }> = {
+  'VC-9928': { mx: 80, my: 36 },
+  'VC-1042': { mx: 20, my: 34 },
+  'VC-8831': { mx: 46, my: 27 },
+  'VC-2210': { mx: 74, my: 56 },
+  'VC-5501': { mx: 63, my: 33 },
+  'VC-3317': { mx: 60, my: 41 },
 }
 
-const MACHINES: Machine[] = [
-  {
-    id: 'VC-9928', name: 'Shibuya Crossing', city: 'Tokyo', country: 'JP',
-    status: 'ONLINE', dailyAvg: 1420, today: 412.50, uptime: 99.98, mx: 80, my: 36,
-    topProducts: [
-      { name: 'Bio-Fuel Cell (L)', revenue: 145.00 },
-      { name: 'Nano-Filter Pack', revenue: 88.20 },
-      { name: 'Synthetic Protein', revenue: 62.50 },
-    ],
-    weekRevenue: [145, 162, 178, 155, 190, 210, 195],
-  },
-  {
-    id: 'VC-1042', name: 'Central Park', city: 'New York', country: 'US',
-    status: 'MAINTENANCE', dailyAvg: 890, today: 0, uptime: 87.20, mx: 20, my: 34,
-    topProducts: [
-      { name: 'Energy Drink XL', revenue: 0 },
-      { name: 'Protein Bar', revenue: 0 },
-      { name: 'Vitamin Water', revenue: 0 },
-    ],
-    weekRevenue: [98, 112, 134, 120, 0, 0, 0],
-  },
-  {
-    id: 'VC-8831', name: 'Silicon Roundabout', city: 'London', country: 'GB',
-    status: 'ONLINE', dailyAvg: 2100, today: 644.10, uptime: 99.71, mx: 46, my: 27,
-    topProducts: [
-      { name: 'Premium Coffee', revenue: 210.00 },
-      { name: 'Protein Shake', revenue: 178.50 },
-      { name: 'Energy Bar', revenue: 124.00 },
-    ],
-    weekRevenue: [198, 210, 185, 220, 235, 208, 195],
-  },
-  {
-    id: 'VC-2210', name: 'Marina Bay', city: 'Singapore', country: 'SG',
-    status: 'ONLINE', dailyAvg: 1200, today: 212.00, uptime: 99.95, mx: 74, my: 56,
-    topProducts: [
-      { name: 'Coconut Water', revenue: 88.00 },
-      { name: 'Green Tea', revenue: 72.00 },
-      { name: 'Vitamin Pack', revenue: 52.00 },
-    ],
-    weekRevenue: [110, 125, 140, 135, 150, 142, 138],
-  },
-  {
-    id: 'VC-5501', name: 'Almaty Plaza', city: 'Almaty', country: 'KZ',
-    status: 'ONLINE', dailyAvg: 680, today: 198.40, uptime: 98.44, mx: 63, my: 33,
-    topProducts: [
-      { name: 'Shaibara Juice', revenue: 72.00 },
-      { name: 'Snickers', revenue: 55.80 },
-      { name: 'Lipton Ice Tea', revenue: 48.20 },
-    ],
-    weekRevenue: [88, 92, 78, 105, 115, 98, 102],
-  },
-  {
-    id: 'VC-3317', name: 'DIFC Tower', city: 'Dubai', country: 'AE',
-    status: 'ONLINE', dailyAvg: 1850, today: 524.20, uptime: 99.90, mx: 60, my: 41,
-    topProducts: [
-      { name: 'Gold Espresso', revenue: 195.00 },
-      { name: 'Premium Water', revenue: 142.00 },
-      { name: 'Date Snack', revenue: 88.00 },
-    ],
-    weekRevenue: [175, 190, 210, 198, 220, 215, 205],
-  },
-  {
-    id: 'VC-7702', name: 'Gangnam District', city: 'Seoul', country: 'KR',
-    status: 'ONLINE', dailyAvg: 1650, today: 388.75, uptime: 99.85, mx: 81, my: 33,
-    topProducts: [
-      { name: 'Banana Milk', revenue: 142.00 },
-      { name: 'Honey Butter', revenue: 118.50 },
-      { name: 'Green Tea Latte', revenue: 98.00 },
-    ],
-    weekRevenue: [155, 168, 175, 162, 180, 192, 188],
-  },
-  {
-    id: 'VC-4488', name: 'Paulista Avenue', city: 'São Paulo', country: 'BR',
-    status: 'OFFLINE', dailyAvg: 560, today: 0, uptime: 72.10, mx: 29, my: 62,
-    topProducts: [
-      { name: 'Guaraná', revenue: 0 },
-      { name: 'Açaí Bar', revenue: 0 },
-      { name: 'Coffee Shot', revenue: 0 },
-    ],
-    weekRevenue: [62, 78, 55, 0, 0, 0, 0],
-  },
-  {
-    id: 'VC-6621', name: 'Nairobi CBD', city: 'Nairobi', country: 'KE',
-    status: 'ONLINE', dailyAvg: 420, today: 118.60, uptime: 96.22, mx: 55, my: 56,
-    topProducts: [
-      { name: 'Tusker Water', revenue: 45.00 },
-      { name: 'Energy Bar', revenue: 38.00 },
-      { name: 'Juice Pack', revenue: 32.00 },
-    ],
-    weekRevenue: [42, 48, 52, 45, 58, 62, 55],
-  },
-  {
-    id: 'VC-1188', name: 'South Bank', city: 'Melbourne', country: 'AU',
-    status: 'ONLINE', dailyAvg: 980, today: 276.30, uptime: 99.10, mx: 83, my: 73,
-    topProducts: [
-      { name: 'Flat White', revenue: 112.00 },
-      { name: 'Tim Tam Bar', revenue: 88.00 },
-      { name: 'V Energy', revenue: 72.00 },
-    ],
-    weekRevenue: [92, 98, 105, 112, 108, 115, 120],
-  },
-  {
-    id: 'VC-9001', name: 'Times Square', city: 'New York', country: 'US',
-    status: 'ONLINE', dailyAvg: 2400, today: 712.80, uptime: 99.92, mx: 21, my: 33,
-    topProducts: [
-      { name: 'Cold Brew', revenue: 245.00 },
-      { name: 'Protein Shake', revenue: 198.00 },
-      { name: 'Power Bar', revenue: 155.00 },
-    ],
-    weekRevenue: [215, 225, 238, 220, 248, 260, 242],
-  },
-  {
-    id: 'VC-3344', name: 'Pudong District', city: 'Shanghai', country: 'CN',
-    status: 'ONLINE', dailyAvg: 1980, today: 558.40, uptime: 99.88, mx: 77, my: 37,
-    topProducts: [
-      { name: 'Nongfu Spring', revenue: 185.00 },
-      { name: 'Oreo Pack', revenue: 148.00 },
-      { name: 'Red Bull', revenue: 122.00 },
-    ],
-    weekRevenue: [185, 195, 210, 202, 215, 220, 218],
-  },
-  {
-    id: 'VC-7755', name: 'La Défense', city: 'Paris', country: 'FR',
-    status: 'MAINTENANCE', dailyAvg: 1340, today: 0, uptime: 91.50, mx: 48, my: 27,
-    topProducts: [
-      { name: 'Perrier Water', revenue: 0 },
-      { name: 'Café au Lait', revenue: 0 },
-      { name: 'Pain au Chocolat', revenue: 0 },
-    ],
-    weekRevenue: [125, 138, 142, 0, 0, 0, 0],
-  },
-  {
-    id: 'VC-8899', name: 'Akihabara', city: 'Tokyo', country: 'JP',
-    status: 'ONLINE', dailyAvg: 1120, today: 315.60, uptime: 99.65, mx: 79, my: 35,
-    topProducts: [
-      { name: 'Pocari Sweat', revenue: 118.00 },
-      { name: 'Calpis Water', revenue: 95.00 },
-      { name: 'Meiji Choc', revenue: 82.00 },
-    ],
-    weekRevenue: [102, 112, 118, 108, 122, 128, 115],
-  },
-]
+// Заглушка — убрать когда реальный массив не нужен
 
 const STATUS_COLOR: Record<MachineStatus, string> = {
   ONLINE: '#14F195',
@@ -198,6 +51,7 @@ const CONTINENTS = [
 export default function MachinesPage() {
   const { connected, connecting } = useWallet()
   const router = useRouter()
+  const { machines, loading: machinesLoading } = useMachines()
   const [mounted, setMounted] = useState(false)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'All' | MachineStatus>('All')
@@ -229,11 +83,11 @@ export default function MachinesPage() {
   }
   if (!connected) return null
 
-  const filtered = MACHINES
+  const filtered = machines
     .filter(m => {
       if (statusFilter !== 'All' && m.status !== statusFilter) return false
       const q = search.toLowerCase()
-      if (q && !m.name.toLowerCase().includes(q) && !m.id.toLowerCase().includes(q) && !m.city.toLowerCase().includes(q)) return false
+      if (q && !m.name.toLowerCase().includes(q) && !m.id.toLowerCase().includes(q) && !m.location.toLowerCase().includes(q)) return false
       return true
     })
     .sort((a, b) => {
@@ -242,8 +96,8 @@ export default function MachinesPage() {
       return a.id.localeCompare(b.id)
     })
 
-  const totalFleet = 1284
-  const onlineCount = MACHINES.filter(m => m.status === 'ONLINE').length
+  const totalFleet = machinesLoading ? '...' : machines.length
+  const onlineCount = machines.filter(m => m.status === 'ONLINE').length
 
   const maxWeekRev = selected ? Math.max(...selected.weekRevenue, 1) : 1
   const weekTotal = selected ? selected.weekRevenue.reduce((a, b) => a + b, 0) : 0
@@ -260,7 +114,7 @@ export default function MachinesPage() {
 
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderLeft: '3px solid #6366f1', borderRadius: 12, padding: '18px 22px' }}>
             <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>TOTAL FLEET</div>
-            <div style={{ fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1 }}>{totalFleet.toLocaleString()}</div>
+            <div style={{ fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1 }}>{totalFleet}</div>
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '18px 22px' }}>
@@ -425,9 +279,10 @@ export default function MachinesPage() {
                 ))}
 
                 {/* Machine dots */}
-                {MACHINES.map(m => {
-                  const cx = (m.mx / 100) * 1000
-                  const cy = (m.my / 100) * 520
+                {machines.map(m => {
+                  const pos = MAP_POS[m.id] ?? { mx: 50, my: 50 }
+                  const cx = (pos.mx / 100) * 1000
+                  const cy = (pos.my / 100) * 520
                   const isSel = selected?.id === m.id
                   const col = STATUS_COLOR[m.status]
                   return (
@@ -486,7 +341,7 @@ export default function MachinesPage() {
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ fontSize: 17, fontWeight: 900, color: '#fff', letterSpacing: 0.3 }}>#{selected.id} {selected.name.toUpperCase()}</div>
-                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>{selected.city}, {selected.country}</div>
+                      <div style={{ fontSize: 11, color: '#64748b', marginTop: 3 }}>{selected.location}</div>
                     </div>
                     <button
                       onClick={() => setSelected(null)}
