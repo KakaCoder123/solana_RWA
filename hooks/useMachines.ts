@@ -6,8 +6,7 @@ import { AnchorProvider, Program } from '@coral-xyz/anchor'
 import { supabase } from '../lib/supabase'
 import IDL from '../lib/idl/vend_machine.json'
 
-const RPC_URL    = process.env.NEXT_PUBLIC_RPC_URL!
-const PROGRAM_ID = new PublicKey('Ewcmz7Bvxm74hGB8op7j1jVTmP8QKyRAe82BoWMWAeke')
+const RPC_URL = process.env.NEXT_PUBLIC_RPC_URL!
 
 export type MachineStatus = 'ONLINE' | 'OFFLINE' | 'MAINTENANCE'
 
@@ -31,7 +30,8 @@ const STATUS_MAP: MachineStatus[] = ['ONLINE', 'OFFLINE', 'MAINTENANCE']
 
 function decodeStr(bytes: number[]): string {
   const end = bytes.findIndex(b => b === 0)
-  return Buffer.from(end === -1 ? bytes : bytes.slice(0, end)).toString('utf8')
+  const arr = new Uint8Array(end === -1 ? bytes : bytes.slice(0, end))
+  return new TextDecoder('utf-8').decode(arr)
 }
 
 export function useMachines() {
@@ -90,6 +90,7 @@ export function useMachines() {
 
         setMachines(result)
       } catch (e) {
+        console.error('[useMachines] error:', e)
         setError(e instanceof Error ? e.message : 'Failed to load machines')
       } finally {
         setLoading(false)
