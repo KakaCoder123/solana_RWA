@@ -105,7 +105,7 @@ pub struct Stake<'info> {
     pub staking_pool: Account<'info, StakingPool>,
 
     #[account(
-        init,
+        init_if_needed,
         payer = owner,
         space = UserStake::LEN,
         seeds = [b"user_stake", owner.key().as_ref()],
