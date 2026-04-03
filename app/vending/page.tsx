@@ -1,13 +1,32 @@
 'use client'
 
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWallet, useConnection, useAnchorWallet } from '@solana/wallet-adapter-react'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef, useCallback } from 'react'
+import { PublicKey } from '@solana/web3.js'
+import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
+import { getAssociatedTokenAddressSync, getAccount } from '@solana/spl-token'
 import NavBar from '@/components/NavBar'
+import IDL from '@/lib/idl/vend_machine.json'
 
 // ── Constants ──────────────────────────────────────────────────
 const VEND_PER_TENGE = 1 / 50   // 1 VEND = 50₸
-const MACHINE_ID = 'VM-ALM-742'
+const MACHINE_ID = 'VC-9928'
+const VEND_MACHINE_PROGRAM_ID = new PublicKey('Ewcmz7Bvxm74hGB8op7j1jVTmP8QKyRAe82BoWMWAeke')
+const VEND_MINT = new PublicKey('4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B')
+
+function strTo16Bytes(s: string): Uint8Array {
+  const arr = new Uint8Array(16).fill(0)
+  new TextEncoder().encode(s).forEach((b, i) => { if (i < 16) arr[i] = b })
+  return arr
+}
+
+const [registryPda] = PublicKey.findProgramAddressSync(
+  [Buffer.from('machine_registry')], VEND_MACHINE_PROGRAM_ID
+)
+const [machinePda] = PublicKey.findProgramAddressSync(
+  [Buffer.from('machine'), strTo16Bytes(MACHINE_ID)], VEND_MACHINE_PROGRAM_ID
+)
 
 // ── Types ──────────────────────────────────────────────────────
 interface Product {
@@ -72,13 +91,15 @@ function useClock() {
 
 // ── Page ───────────────────────────────────────────────────────
 export default function VendingPage() {
-  const { connected, connecting } = useWallet()
+  const { connected, connecting, publicKey } = useWallet()
+  const { connection } = useConnection()
+  const anchorWallet = useAnchorWallet()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
   const [selRow, setSelRow] = useState<string | null>(null)
   const [selCol, setSelCol] = useState<string | null>(null)
-  const [vendBal, setVendBal] = useState(8.40)
+  const [vendBal, setVendBal] = useState(0)
   const [sessionRev, setSessionRev] = useState(420.69)
   const [dispensed, setDispensed] = useState<Product | null>(null)
   const [dispensing, setDispensing] = useState(false)
@@ -103,6 +124,15 @@ export default function VendingPage() {
     if (mounted && !connecting && !connected) router.push('/')
   }, [mounted, connecting, connected, router])
 
+  // Load real VEND balance
+  useEffect(() => {
+    if (!publicKey) return
+    const ata = getAssociatedTokenAddressSync(VEND_MINT, publicKey)
+    getAccount(connection, ata)
+      .then(acc => setVendBal(Number(acc.amount) / 1_000_000))
+      .catch(() => setVendBal(0))
+  }, [publicKey, connection])
+
   const addTermLine = useCallback((line: string) => {
     setTermLines(prev => [...prev.slice(-8), line])
   }, [])
@@ -124,7 +154,7 @@ export default function VendingPage() {
   }, [mounted])
 
   // ── Handle purchase ────────────────────────────────────────────
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     if (!selProduct) { setError('Выберите товар'); return }
     if (selProduct.empty) { setError('Слот пуст'); return }
     const cost = +(selProduct.price * VEND_PER_TENGE).toFixed(2)
@@ -135,11 +165,24 @@ export default function VendingPage() {
     addTermLine(`> DISPENSING: ${selProduct.name}`)
     addTermLine(`> PRICE: ${selProduct.price}₸ / ${cost} VEND`)
 
-    setTimeout(() => {
+    try {
+      if (anchorWallet) {
+        const provider = new AnchorProvider(connection, anchorWallet, { commitment: 'confirmed' })
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const program = new Program(IDL as any, provider)
+        const amountLamports = new BN(Math.floor(selProduct.price * 14000)) // ~₸ to lamports
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const sig = await (program.methods as any).recordSale(amountLamports).accounts({
+          buyer: anchorWallet.publicKey,
+          registry: registryPda,
+          machine: machinePda,
+        }).rpc()
+        addTermLine(`> TX: ${sig.slice(0, 20)}...`)
+      }
+
       setVendBal(prev => +(prev - cost).toFixed(2))
       setSessionRev(prev => +(prev + selProduct.price).toFixed(2))
       setDispensed(selProduct)
-      setDispensing(false)
       setSaleNotif(true)
       addTermLine(`> CONFIRMED ON-CHAIN`)
       addTermLine(`> FEE BURNT: 0.05 VEND`)
@@ -147,7 +190,12 @@ export default function VendingPage() {
       setLedger(prev => [{ label: `${selProduct.code} PURCHASE`, amount: `${sol} SOL`, pending: false }, ...prev.slice(0, 4)])
       setSelRow(null); setSelCol(null)
       setTimeout(() => { setSaleNotif(false); setDispensed(null) }, 3500)
-    }, 1800)
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message.slice(0, 80) : 'Transaction failed')
+      addTermLine(`> ERROR: TX FAILED`)
+    } finally {
+      setDispensing(false)
+    }
   }
 
   if (!mounted || connecting) return (
