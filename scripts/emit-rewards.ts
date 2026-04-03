@@ -21,8 +21,9 @@ const VEND_MINT  = new PublicKey('4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B')
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-// Текущая цена VEND в USD (1 SOL ≈ $150, 1 VEND = 0.001 SOL)
-const VEND_PRICE_USD = 0.15
+// Цена VEND: 1 SOL = 50,000 VEND, 1 SOL ≈ $150 → $0.003 за VEND
+const VEND_PRICE_USD = 0.003
+const MAX_EMIT_VEND  = 200   // максимум за один запуск (5000 VEND хватит на ~25 запусков)
 const HOURS = 6
 const DECIMALS = 1_000_000
 
@@ -64,9 +65,11 @@ async function main() {
   }
   console.log(`Total revenue (6h): $${totalUsd.toFixed(2)}`)
 
-  // Конвертируем в VEND
-  const vendAmount = Math.floor((totalUsd / VEND_PRICE_USD) * DECIMALS)
-  console.log(`VEND to emit: ${(vendAmount / DECIMALS).toFixed(2)} VEND`)
+  // Конвертируем в VEND, применяем лимит MAX_EMIT_VEND
+  const rawVend = (totalUsd / VEND_PRICE_USD)
+  const cappedVend = Math.min(rawVend, MAX_EMIT_VEND)
+  const vendAmount = Math.floor(cappedVend * DECIMALS)
+  console.log(`VEND to emit: ${cappedVend.toFixed(2)} VEND (raw: ${rawVend.toFixed(2)}, cap: ${MAX_EMIT_VEND})`)
 
   if (vendAmount <= 0) {
     console.log('Nothing to emit, exiting.')
