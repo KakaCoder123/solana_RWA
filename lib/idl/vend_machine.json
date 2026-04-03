@@ -496,6 +496,15 @@
             }
           },
           {
+            "name": "name",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
             "name": "location",
             "type": {
               "array": [
@@ -513,8 +522,8 @@
             "type": "u64"
           },
           {
-            "name": "is_active",
-            "type": "bool"
+            "name": "status",
+            "type": "u8"
           },
           {
             "name": "registered_at",

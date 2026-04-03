@@ -63,16 +63,16 @@ export function useMachines() {
         // 3. Объединяем
         const result: Machine[] = onChainAccounts.map((acc: any) => {
           const a = acc.account
-          const machineId = decodeStr(Array.from(a.machineId))
+          const machineId = decodeStr(Array.from(a.machine_id ?? a.machineId ?? []))
           const m = metaMap.get(machineId)
 
           return {
             id: machineId,
-            name: decodeStr(Array.from(a.name)),
-            location: decodeStr(Array.from(a.location)),
+            name: decodeStr(Array.from(a.name ?? [])),
+            location: decodeStr(Array.from(a.location ?? [])),
             status: STATUS_MAP[a.status] ?? 'OFFLINE',
-            totalRevenue: a.totalRevenue.toNumber(),
-            totalSales: a.totalSales.toNumber(),
+            totalRevenue: (a.total_revenue ?? a.totalRevenue)?.toNumber() ?? 0,
+            totalSales: (a.total_sales ?? a.totalSales)?.toNumber() ?? 0,
             dailyAvg:     m?.daily_avg     ?? 0,
             today:        m?.today         ?? 0,
             uptime:       m?.uptime        ?? 99.9,
