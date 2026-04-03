@@ -6,10 +6,11 @@
  *   npx tsx scripts/reinit-staking-pool.ts
  */
 import {
-  Connection, Keypair, PublicKey,
+  Connection, Keypair, PublicKey, Transaction, TransactionInstruction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { AnchorProvider, Program, BN, Wallet } from "@coral-xyz/anchor";
+import * as crypto from "crypto";
 import * as fs from "fs";
 import IDL from "../lib/idl/vendchain_contracts.json";
 
@@ -56,19 +57,37 @@ async function main() {
       console.log("✅ Already using correct mint! Nothing to do.");
       return;
     }
-    console.log("  Wrong mint — need to reinit. Please close pool first.");
-    return;
+    console.log("  Wrong mint — closing pool via raw instruction...");
+    const disc = crypto.createHash("sha256").update("global:close_staking_pool").digest().slice(0, 8);
+    const closeIx = new TransactionInstruction({
+      programId: program.programId,
+      keys: [
+        { pubkey: payer.publicKey, isSigner: true,  isWritable: true },
+        { pubkey: poolPda,         isSigner: false, isWritable: true },
+      ],
+      data: disc,
+    });
+    const closeSig = await sendAndConfirmTransaction(conn, new Transaction().add(closeIx), [payer]);
+    console.log("✅ Pool closed:", closeSig);
   } else {
     console.log("Step 1: No pool on new program, proceeding to init.");
   }
 
   // ── Step 2: Initialize new pool with correct mint ─────────────────
+  // Compute v2 vault PDAs explicitly (IDL is stale, can't rely on auto-resolution)
+  const [stakeVaultV2] = PublicKey.findProgramAddressSync([Buffer.from("stake_vault_v2")], program.programId);
+  const [rewardVaultV2] = PublicKey.findProgramAddressSync([Buffer.from("reward_vault_v2")], program.programId);
   console.log("\nStep 2: Initializing new staking pool with VEND mint:", VEND_MINT.toBase58());
+  console.log("  stake_vault_v2 :", stakeVaultV2.toBase58());
+  console.log("  reward_vault_v2:", rewardVaultV2.toBase58());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tx2 = await (program.methods as any).initializeStakingPool(new BN(REWARD_RATE_BPS))
     .accounts({
       authority: payer.publicKey,
       vendMint: VEND_MINT,
+      stakingPool: poolPda,
+      stakeVault: stakeVaultV2,
+      rewardVault: rewardVaultV2,
     })
     .transaction();
   const sig2 = await sendAndConfirmTransaction(conn, tx2, [payer]);

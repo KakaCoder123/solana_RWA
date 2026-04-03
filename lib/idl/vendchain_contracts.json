@@ -1,11 +1,11 @@
 {
-  "address": "54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV",
+  "address": "9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK",
   "metadata": {
     "name": "vendchain_contracts",
     "version": "0.1.0",
     "spec": "0.1.0",
     "description": "Created with Anchor",
-    "address": "54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV"
+    "address": "9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK"
   },
   "instructions": [
     {
@@ -79,7 +79,7 @@
           }
         },
         {
-          "name": "reward_vault",
+          "name": "reward_vault_v2",
           "writable": true,
           "pda": {
             "seeds": [
@@ -158,7 +158,7 @@
           }
         },
         {
-          "name": "reward_vault",
+          "name": "reward_vault_v2",
           "writable": true,
           "pda": {
             "seeds": [
@@ -245,7 +245,7 @@
           }
         },
         {
-          "name": "stake_vault",
+          "name": "stake_vault_v2",
           "writable": true,
           "pda": {
             "seeds": [
@@ -269,7 +269,7 @@
           }
         },
         {
-          "name": "reward_vault",
+          "name": "reward_vault_v2",
           "writable": true,
           "pda": {
             "seeds": [
@@ -490,7 +490,7 @@
           }
         },
         {
-          "name": "stake_vault",
+          "name": "stake_vault_v2",
           "writable": true,
           "pda": {
             "seeds": [
@@ -601,7 +601,7 @@
           }
         },
         {
-          "name": "stake_vault",
+          "name": "stake_vault_v2",
           "writable": true,
           "pda": {
             "seeds": [
