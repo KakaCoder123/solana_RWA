@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { PublicKey } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
-import { getAssociatedTokenAddressSync, getAccount } from '@solana/spl-token'
+import { getAssociatedTokenAddressSync, getAccount, createTransferInstruction } from '@solana/spl-token'
+import { Transaction } from '@solana/web3.js'
 import NavBar from '@/components/NavBar'
 import IDL from '@/lib/idl/vend_machine.json'
 
@@ -14,6 +15,8 @@ const VEND_PER_TENGE = 1 / 50   // 1 VEND = 50₸
 const MACHINE_ID = 'VC-9928'
 const VEND_MACHINE_PROGRAM_ID = new PublicKey('Ewcmz7Bvxm74hGB8op7j1jVTmP8QKyRAe82BoWMWAeke')
 const VEND_MINT = new PublicKey('4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B')
+// Treasury = deployer wallet (принимает VEND за покупки)
+const TREASURY = new PublicKey('2Xxc4uMPpfGJJtxEXV2SfP34tQ8n56mYZEw26n79LPaw')
 
 function strTo16Bytes(s: string): Uint8Array {
   const arr = new Uint8Array(16).fill(0)
@@ -166,26 +169,40 @@ export default function VendingPage() {
     addTermLine(`> PRICE: ${selProduct.price}₸ / ${cost} VEND`)
 
     try {
-      if (anchorWallet) {
-        const provider = new AnchorProvider(connection, anchorWallet, { commitment: 'confirmed' })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const program = new Program(IDL as any, provider)
-        const amountLamports = new BN(Math.floor(selProduct.price * 14000)) // ~₸ to lamports
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const sig = await (program.methods as any).recordSale(amountLamports).accounts({
-          buyer: anchorWallet.publicKey,
-          registry: registryPda,
-          machine: machinePda,
-        }).rpc()
-        addTermLine(`> TX: ${sig.slice(0, 20)}...`)
-      }
+      if (!anchorWallet) throw new Error('Wallet not connected')
 
-      setVendBal(prev => +(prev - cost).toFixed(2))
+      const provider = new AnchorProvider(connection, anchorWallet, { commitment: 'confirmed' })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const program = new Program(IDL as any, provider)
+
+      const userAta = getAssociatedTokenAddressSync(VEND_MINT, anchorWallet.publicKey)
+      const treasuryAta = getAssociatedTokenAddressSync(VEND_MINT, TREASURY)
+      const vendRaw = Math.floor(cost * 1_000_000)
+
+      // Собираем одну транзакцию: record_sale + VEND transfer
+      const amountLamports = new BN(Math.floor(selProduct.price * 14000))
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const recordSaleTx = await (program.methods as any).recordSale(amountLamports).accounts({
+        buyer: anchorWallet.publicKey,
+        registry: registryPda,
+        machine: machinePda,
+      }).transaction()
+
+      const transferIx = createTransferInstruction(userAta, treasuryAta, anchorWallet.publicKey, vendRaw)
+      recordSaleTx.add(transferIx)
+
+      const sig = await provider.sendAndConfirm(recordSaleTx)
+      addTermLine(`> TX: ${sig.slice(0, 20)}...`)
+
+      // Обновляем реальный баланс с блокчейна
+      const ataAcc = await getAccount(connection, userAta)
+      setVendBal(Number(ataAcc.amount) / 1_000_000)
+
       setSessionRev(prev => +(prev + selProduct.price).toFixed(2))
       setDispensed(selProduct)
       setSaleNotif(true)
       addTermLine(`> CONFIRMED ON-CHAIN`)
-      addTermLine(`> FEE BURNT: 0.05 VEND`)
+      addTermLine(`> -${cost} VEND SPENT`)
       const sol = (selProduct.price * 0.000014).toFixed(4)
       setLedger(prev => [{ label: `${selProduct.code} PURCHASE`, amount: `${sol} SOL`, pending: false }, ...prev.slice(0, 4)])
       setSelRow(null); setSelCol(null)
