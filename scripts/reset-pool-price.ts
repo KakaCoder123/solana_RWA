@@ -1,6 +1,6 @@
 /**
  * Закрывает sale_pool и переинициализирует с правильной ценой
- * 0.001 SOL/VEND → price_lamports = 1 (1 lamport per raw unit)
+ * Переустанавливает sale_pool с текущей ценой 0.001 SOL/VEND (1000 VEND/SOL)
  *
  * Запуск: npx tsx scripts/reset-pool-price.ts
  */
@@ -13,7 +13,8 @@ import * as fs from 'fs';
 
 const PROGRAM_ID = new PublicKey('GodxM9254JxPRsmLvDBxuyhjwdKNhccccJrCj1UFdEdB');
 const VEND_MINT   = new PublicKey('4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B');
-// 0.001 SOL per VEND: 1 VEND = 10^6 raw, cost = 1 * 10^6 = 10^6 lamports = 0.001 SOL
+// 0.001 SOL per VEND → 1 SOL = 1,000 VEND
+// price_lamports = 1 (1 lamport per raw unit → 1 * 10^6 / 10^9 = 0.001 SOL/VEND)
 const NEW_PRICE_LAMPORTS = 1n;
 
 function disc(s: string) { return crypto.createHash('sha256').update(s).digest().subarray(0, 8); }

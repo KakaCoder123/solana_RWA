@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { useWallet, useAnchorWallet, useConnection } from '@solana/wallet-adapter-react'
 import { PublicKey } from '@solana/web3.js'
 import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
-import { getAssociatedTokenAddressSync } from '@solana/spl-token'
+import { getAssociatedTokenAddressSync, getAccount } from '@solana/spl-token'
 import IDL from '../lib/idl/vendchain_contracts.json'
 import {
   PROGRAM_ID,
@@ -41,6 +41,7 @@ export function useStaking() {
   const [pool, setPool] = useState<PoolData | null>(null)
   const [userStake, setUserStake] = useState<UserStakeData | null>(null)
   const [unstakeRequest, setUnstakeRequest] = useState<UnstakeRequestData | null>(null)
+  const [vendBalance, setVendBalance] = useState<number>(0)
   const [loading, setLoading] = useState(true)
   const [txLoading, setTxLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -90,6 +91,17 @@ export function useStaking() {
       })
     } catch {
       setUserStake(null)
+    }
+
+    // Fetch VEND wallet balance
+    if (pool?.vendMint) {
+      try {
+        const ata = getAssociatedTokenAddressSync(pool.vendMint, publicKey)
+        const ataAcc = await getAccount(connection, ata)
+        setVendBalance(Number(ataAcc.amount) / VEND_LAMPORTS)
+      } catch {
+        setVendBalance(0)
+      }
     }
 
     try {
@@ -209,6 +221,7 @@ export function useStaking() {
     pool,
     userStake,
     unstakeRequest,
+    vendBalance,
     loading,
     txLoading,
     error,

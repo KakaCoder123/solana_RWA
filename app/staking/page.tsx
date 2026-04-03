@@ -62,7 +62,7 @@ export default function StakingPage() {
   const [showUnstakeInput, setShowUnstakeInput] = useState(false)
 
   const {
-    pool, userStake, unstakeRequest,
+    pool, userStake, unstakeRequest, vendBalance,
     loading, txLoading, error,
     apyPercent, stake, requestUnstake, withdraw, claimRewards, clearError,
   } = useStaking()
@@ -156,6 +156,15 @@ export default function StakingPage() {
               <div style={{ fontSize: 11, color: '#64748b' }}>Linear, per second</div>
             </div>
           </div>
+          <div style={{ ...card, padding: '14px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1.5 }}>REWARD VAULT</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 16, fontWeight: 900, color: (pool?.rewardsAvailable ?? 0) > 0 ? '#14F195' : '#ef4444' }}>
+                {loading ? '—' : fmtVend(pool?.rewardsAvailable ?? 0)}
+              </span>
+              <span style={{ fontSize: 11, color: '#475569' }}>VEND available</span>
+            </div>
+          </div>
 
           {/* User share */}
           <div style={{
@@ -165,6 +174,9 @@ export default function StakingPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
               <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1.5 }}>YOUR STAKE</div>
+              <div style={{ fontSize: 11, color: '#475569' }}>
+                Balance: <span style={{ color: '#fff', fontWeight: 700 }}>{fmtVend(vendBalance)} VEND</span>
+              </div>
               <div style={{
                 background: userStake ? 'rgba(20,241,149,0.15)' : 'rgba(99,102,241,0.2)',
                 border: `1px solid ${userStake ? 'rgba(20,241,149,0.4)' : 'rgba(99,102,241,0.4)'}`,
@@ -515,7 +527,12 @@ export default function StakingPage() {
             </div>
 
             <div style={{ marginBottom: 20 }}>
-              <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1, marginBottom: 8 }}>AMOUNT TO STAKE</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 1 }}>AMOUNT TO STAKE</div>
+                <div style={{ fontSize: 11, color: '#475569' }}>
+                  Available: <span style={{ color: '#fff', fontWeight: 700 }}>{fmtVend(vendBalance)} VEND</span>
+                </div>
+              </div>
               <div style={{ position: 'relative' }}>
                 <input
                   type="number"
@@ -526,11 +543,17 @@ export default function StakingPage() {
                   style={{
                     width: '100%', background: 'rgba(255,255,255,0.05)',
                     border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 10, padding: '14px 52px 14px 14px',
+                    borderRadius: 10, padding: '14px 90px 14px 14px',
                     color: '#fff', fontSize: 18, fontWeight: 700, outline: 'none',
                   }}
                 />
-                <span style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', fontSize: 12, fontWeight: 700, color: '#475569' }}>VEND</span>
+                <div style={{ position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button
+                    onClick={() => setStakeInput(String(vendBalance))}
+                    style={{ fontSize: 10, fontWeight: 800, color: '#6366f1', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: 4, padding: '2px 6px', cursor: 'pointer' }}
+                  >MAX</button>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: '#475569' }}>VEND</span>
+                </div>
               </div>
             </div>
 
