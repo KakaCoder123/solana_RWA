@@ -48,13 +48,18 @@ async function main() {
   if (!payer) throw new Error('Keypair not found')
   console.log('Payer:', payer.publicKey.toBase58())
 
-  // Читаем машины из Supabase
+  // Читаем только ONLINE машины из Supabase
   const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
   const { data: machines, error } = await supabase
     .from('machines')
-    .select('machine_id, daily_avg')
+    .select('machine_id, daily_avg, status')
+    .eq('status', 'ONLINE')
   if (error) throw new Error(`Supabase error: ${error.message}`)
-  if (!machines?.length) throw new Error('No machines found in Supabase')
+  if (!machines?.length) {
+    console.log('No ONLINE machines found, skipping emission.')
+    return
+  }
+  console.log(`Found ${machines.length} ONLINE machine(s)`)
 
   // Считаем выручку за 6 часов
   let totalUsd = 0
