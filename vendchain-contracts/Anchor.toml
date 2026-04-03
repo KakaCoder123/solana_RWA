@@ -7,9 +7,11 @@ skip-lint = false
 
 [programs.localnet]
 vendchain_contracts = "9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK"
+vend_machine = "Ewcmz7Bvxm74hGB8op7j1jVTmP8QKyRAe82BoWMWAeke"
 
 [programs.devnet]
 vendchain_contracts = "9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK"
+vend_machine = "Ewcmz7Bvxm74hGB8op7j1jVTmP8QKyRAe82BoWMWAeke"
 
 [registry]
 url = "https://api.apr.dev"

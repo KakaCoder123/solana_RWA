@@ -56,7 +56,12 @@ jobs:
         working-directory: vendchain-contracts
         run: anchor build
 
-      - name: Deploy program
+      - name: Set up vend-machine keypair
+        run: |
+          echo '${{ secrets.VEND_MACHINE_KEYPAIR }}' > vendchain-contracts/target/deploy/vend_machine-keypair.json
+          echo "Vend-machine keypair set"
+
+      - name: Deploy vendchain_contracts program
         working-directory: vendchain-contracts
         run: |
           anchor deploy \
@@ -64,7 +69,17 @@ jobs:
             --provider.cluster devnet \
             --provider.wallet ~/.config/solana/id.json \
             --no-idl
-          echo "✅ Program deployed: 54v59Q2EA84gV8RY83nFyYHbnvZASyxgiT8zgNKA2yYV"
+          echo "✅ vendchain_contracts deployed"
+
+      - name: Deploy vend_machine program
+        working-directory: vendchain-contracts
+        run: |
+          anchor deploy \
+            --program-name vend_machine \
+            --provider.cluster devnet \
+            --provider.wallet ~/.config/solana/id.json \
+            --no-idl
+          echo "✅ vend_machine deployed"
 
       - name: Update IDL on-chain
         continue-on-error: true
@@ -77,11 +92,13 @@ jobs:
             9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK || true
           echo "✅ IDL step done (errors ignored)"
 
-      - name: Copy new IDL to frontend
+      - name: Copy new IDLs to frontend
         run: |
           cp vendchain-contracts/target/idl/vendchain_contracts.json \
              lib/idl/vendchain_contracts.json
-          echo "✅ Frontend IDL updated"
+          cp vendchain-contracts/target/idl/vend_machine.json \
+             lib/idl/vend_machine.json
+          echo "✅ Frontend IDLs updated"
 
       - name: Commit updated IDL
         run: |

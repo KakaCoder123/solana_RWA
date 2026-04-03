@@ -18,16 +18,17 @@ impl MachineRegistry {
 pub struct MachineAccount {
     pub owner: Pubkey,
     pub machine_id: [u8; 16],  // UTF-8, дополняется нулями
+    pub name: [u8; 32],         // UTF-8 название машины
     pub location: [u8; 64],    // UTF-8 строка локации
     pub total_revenue: u64,    // lamports
     pub total_sales: u64,
-    pub is_active: bool,
+    pub status: u8,             // 0=ONLINE, 1=OFFLINE, 2=MAINTENANCE
     pub registered_at: i64,
     pub last_sale_at: i64,
     pub bump: u8,
 }
 impl MachineAccount {
-    pub const LEN: usize = 8 + 32 + 16 + 64 + 8 + 8 + 1 + 8 + 8 + 1;
+    pub const LEN: usize = 8 + 32 + 16 + 32 + 64 + 8 + 8 + 1 + 8 + 8 + 1;
 
     pub fn machine_id_str(&self) -> &str {
         let end = self.machine_id.iter().position(|&b| b == 0).unwrap_or(16);

@@ -6,11 +6,10 @@ use crate::{RegisterMachine, RecordSale, ToggleMachine};
 pub fn register_machine(
     ctx: Context<RegisterMachine>,
     machine_id: [u8; 16],
+    name: [u8; 32],
     location: [u8; 64],
 ) -> Result<()> {
-    // Validate machine_id — must have at least one non-zero byte
     require!(machine_id.iter().any(|&b| b != 0), MachineError::InvalidMachineId);
-    // Validate location — must have at least one non-zero byte
     require!(location.iter().any(|&b| b != 0), MachineError::InvalidLocation);
 
     let registry = &mut ctx.accounts.registry;
@@ -19,10 +18,11 @@ pub fn register_machine(
 
     machine.owner = ctx.accounts.owner.key();
     machine.machine_id = machine_id;
+    machine.name = name;
     machine.location = location;
     machine.total_revenue = 0;
     machine.total_sales = 0;
-    machine.is_active = true;
+    machine.status = 0; // ONLINE
     machine.registered_at = clock.unix_timestamp;
     machine.last_sale_at = 0;
     machine.bump = ctx.bumps.machine;
@@ -46,7 +46,7 @@ pub fn record_sale(
     require!(amount_lamports > 0, MachineError::ZeroAmount);
 
     let machine = &mut ctx.accounts.machine;
-    require!(machine.is_active, MachineError::MachineNotActive);
+    require!(machine.status == 0, MachineError::MachineNotActive);
 
     let registry = &mut ctx.accounts.registry;
     let clock = Clock::get()?;
@@ -78,13 +78,10 @@ pub fn record_sale(
     Ok(())
 }
 
-pub fn toggle_machine(ctx: Context<ToggleMachine>, is_active: bool) -> Result<()> {
+pub fn update_status(ctx: Context<ToggleMachine>, status: u8) -> Result<()> {
+    require!(status <= 2, MachineError::Unauthorized); // 0=ONLINE, 1=OFFLINE, 2=MAINTENANCE
     let machine = &mut ctx.accounts.machine;
-    require!(
-        machine.owner == ctx.accounts.owner.key(),
-        MachineError::Unauthorized
-    );
-    machine.is_active = is_active;
-    msg!("Machine {} active={}", machine.machine_id_str(), is_active);
+    machine.status = status;
+    msg!("Machine {} status={}", machine.machine_id_str(), status);
     Ok(())
 }

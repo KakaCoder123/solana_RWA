@@ -7,7 +7,7 @@ mod logic;
 use state::*;
 use errors::MachineError;
 
-declare_id!("6P7dyj9tyxw9zZbG6ZmJGVVYwWpWUqpYaXcgcH9MGpFw");
+declare_id!("Ewcmz7Bvxm74hGB8op7j1jVTmP8QKyRAe82BoWMWAeke");
 
 #[program]
 pub mod vend_machine {
@@ -28,9 +28,15 @@ pub mod vend_machine {
     pub fn register_machine(
         ctx: Context<RegisterMachine>,
         machine_id: [u8; 16],
+        name: [u8; 32],
         location: [u8; 64],
     ) -> Result<()> {
-        logic::register_machine(ctx, machine_id, location)
+        logic::register_machine(ctx, machine_id, name, location)
+    }
+
+    /// Обновить статус машины (0=ONLINE, 1=OFFLINE, 2=MAINTENANCE)
+    pub fn update_status(ctx: Context<ToggleMachine>, status: u8) -> Result<()> {
+        logic::update_status(ctx, status)
     }
 
     /// Записать продажу (вызывается IoT-устройством или оператором)
