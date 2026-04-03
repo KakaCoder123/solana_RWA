@@ -1,0 +1,31 @@
+name: Emit Staking Rewards
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'   # каждые 6 часов
+  workflow_dispatch:          # можно запустить вручную
+
+jobs:
+  emit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Set up Solana keypair
+        run: |
+          mkdir -p ~/.config/solana
+          echo '${{ secrets.DEPLOYER_KEYPAIR }}' > ~/.config/solana/id.json
+
+      - name: Emit rewards
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: npx tsx scripts/emit-rewards.ts
