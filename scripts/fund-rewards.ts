@@ -19,7 +19,7 @@ const PROGRAM_ID = new PublicKey("9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK")
 const VEND_MINT  = new PublicKey("4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B");
 
 // How many VEND tokens to deposit into the reward vault (raw units, 6 decimals)
-const FUND_AMOUNT = 10_000 * 1_000_000; // 10,000 VEND
+const FUND_AMOUNT = 9_500 * 1_000_000; // 9,500 VEND
 
 async function main() {
   const conn = new Connection(RPC_URL, "confirmed");
