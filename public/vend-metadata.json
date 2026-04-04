@@ -2,14 +2,14 @@
   "name": "VendChain Token",
   "symbol": "VEND",
   "description": "VEND is the native utility token of VendChain — a decentralized vending machine network on Solana. Stake VEND to earn rewards and invest in real-world vending machine revenue.",
-  "image": "https://raw.githubusercontent.com/KakaCoder123/solana_RWA/main/public/logo.svg",
+  "image": "https://raw.githubusercontent.com/KakaCoder123/solana_RWA/main/public/vend-logo.png",
   "external_url": "https://vendchain.io",
   "attributes": [],
   "properties": {
     "files": [
       {
-        "uri": "https://raw.githubusercontent.com/KakaCoder123/solana_RWA/main/public/logo.svg",
-        "type": "image/svg+xml"
+        "uri": "https://raw.githubusercontent.com/KakaCoder123/solana_RWA/main/public/vend-logo.png",
+        "type": "image/png"
       }
     ],
     "category": "fungible"
