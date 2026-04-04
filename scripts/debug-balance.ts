@@ -8,7 +8,7 @@ import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 const RPC_URL = "https://devnet.helius-rpc.com/?api-key=3d77b912-770c-433e-b920-1dac2f9efc39";
-const VEND_MINT = new PublicKey("4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B");
+const VEND_MINT = new PublicKey("CNFeMq6S9BMbsHbWTYBVCkjvQJ95UX5gmrVn95nerDeZ");
 
 async function main() {
   const walletArg = process.argv[2];

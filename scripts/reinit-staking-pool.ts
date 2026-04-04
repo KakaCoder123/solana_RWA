@@ -15,7 +15,7 @@ import * as fs from "fs";
 import IDL from "../lib/idl/vendchain_contracts.json";
 
 const RPC_URL  = "https://devnet.helius-rpc.com/?api-key=3d77b912-770c-433e-b920-1dac2f9efc39";
-const VEND_MINT = new PublicKey("4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B"); // sale mint
+const VEND_MINT = new PublicKey("CNFeMq6S9BMbsHbWTYBVCkjvQJ95UX5gmrVn95nerDeZ"); // sale mint
 const REWARD_RATE_BPS = 1000; // 10% APY
 
 async function main() {
@@ -75,11 +75,11 @@ async function main() {
 
   // ── Step 2: Initialize new pool with correct mint ─────────────────
   // Compute v2 vault PDAs explicitly (IDL is stale, can't rely on auto-resolution)
-  const [stakeVaultV2] = PublicKey.findProgramAddressSync([Buffer.from("stake_vault_v2")], program.programId);
-  const [rewardVaultV2] = PublicKey.findProgramAddressSync([Buffer.from("reward_vault_v2")], program.programId);
+  const [stakeVaultV2] = PublicKey.findProgramAddressSync([Buffer.from("stake_vault_v3")], program.programId);
+  const [rewardVaultV2] = PublicKey.findProgramAddressSync([Buffer.from("reward_vault_v3")], program.programId);
   console.log("\nStep 2: Initializing new staking pool with VEND mint:", VEND_MINT.toBase58());
-  console.log("  stake_vault_v2 :", stakeVaultV2.toBase58());
-  console.log("  reward_vault_v2:", rewardVaultV2.toBase58());
+  console.log("  stake_vault_v3 :", stakeVaultV2.toBase58());
+  console.log("  reward_vault_v3:", rewardVaultV2.toBase58());
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tx2 = await (program.methods as any).initializeStakingPool(new BN(REWARD_RATE_BPS))
     .accounts({

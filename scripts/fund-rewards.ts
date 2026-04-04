@@ -16,7 +16,7 @@ import * as fs from "fs";
 
 const RPC_URL   = "https://devnet.helius-rpc.com/?api-key=3d77b912-770c-433e-b920-1dac2f9efc39";
 const PROGRAM_ID = new PublicKey("9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK");
-const VEND_MINT  = new PublicKey("4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B");
+const VEND_MINT  = new PublicKey("CNFeMq6S9BMbsHbWTYBVCkjvQJ95UX5gmrVn95nerDeZ");
 
 // How many VEND tokens to deposit into the reward vault (raw units, 6 decimals)
 const FUND_AMOUNT = 9_500 * 1_000_000; // 9,500 VEND

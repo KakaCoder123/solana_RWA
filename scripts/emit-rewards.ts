@@ -16,7 +16,7 @@ import * as fs from 'fs'
 
 const RPC_URL    = 'https://devnet.helius-rpc.com/?api-key=3d77b912-770c-433e-b920-1dac2f9efc39'
 const PROGRAM_ID = new PublicKey('9T4YTDnoA1KQyVmcyEqJug5jWkXEjyi6WLw2uKr9kowK')
-const VEND_MINT  = new PublicKey('4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B')
+const VEND_MINT  = new PublicKey('CNFeMq6S9BMbsHbWTYBVCkjvQJ95UX5gmrVn95nerDeZ')
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const SUPABASE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!

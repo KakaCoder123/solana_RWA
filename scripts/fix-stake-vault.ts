@@ -1,5 +1,5 @@
 /**
- * Перекидывает VEND из reward_vault_v2 → stake_vault_v2
+ * Перекидывает VEND из reward_vault_v3 → stake_vault_v3
  * Запускать ПОСЛЕ деплоя нового контракта с admin_fund_stake_vault
  *
  * Запуск: npx tsx scripts/fix-stake-vault.ts
@@ -27,11 +27,11 @@ async function main() {
   const program = new Program(IDL as any, provider);
 
   const [poolPda]        = PublicKey.findProgramAddressSync([Buffer.from("staking_pool")], PROGRAM_ID);
-  const [stakeVault]     = PublicKey.findProgramAddressSync([Buffer.from("stake_vault_v2")], PROGRAM_ID);
-  const [rewardVault]    = PublicKey.findProgramAddressSync([Buffer.from("reward_vault_v2")], PROGRAM_ID);
+  const [stakeVault]     = PublicKey.findProgramAddressSync([Buffer.from("stake_vault_v3")], PROGRAM_ID);
+  const [rewardVault]    = PublicKey.findProgramAddressSync([Buffer.from("reward_vault_v3")], PROGRAM_ID);
 
-  console.log("stake_vault_v2 :", stakeVault.toBase58());
-  console.log("reward_vault_v2:", rewardVault.toBase58());
+  console.log("stake_vault_v3 :", stakeVault.toBase58());
+  console.log("reward_vault_v3:", rewardVault.toBase58());
 
   const amount = new BN(AMOUNT_VEND * 1_000_000);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

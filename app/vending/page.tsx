@@ -14,7 +14,7 @@ import IDL from '@/lib/idl/vend_machine.json'
 const VEND_PER_TENGE = 1 / 50   // 1 VEND = 50₸
 const MACHINE_ID = 'VC-9928'
 const VEND_MACHINE_PROGRAM_ID = new PublicKey('Ewcmz7Bvxm74hGB8op7j1jVTmP8QKyRAe82BoWMWAeke')
-const VEND_MINT = new PublicKey('4nr5wxpSUUZKpePSu8S5MDSRPd5EZ4Lm67S97EGrLY4B')
+const VEND_MINT = new PublicKey('CNFeMq6S9BMbsHbWTYBVCkjvQJ95UX5gmrVn95nerDeZ')
 // Treasury = deployer wallet (принимает VEND за покупки)
 const TREASURY = new PublicKey('2Xxc4uMPpfGJJtxEXV2SfP34tQ8n56mYZEw26n79LPaw')
 

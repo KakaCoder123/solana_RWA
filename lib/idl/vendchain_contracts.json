@@ -79,7 +79,7 @@
           }
         },
         {
-          "name": "reward_vault_v2",
+          "name": "reward_vault_v3",
           "writable": true,
           "pda": {
             "seeds": [
@@ -161,7 +161,7 @@
           }
         },
         {
-          "name": "reward_vault_v2",
+          "name": "reward_vault_v3",
           "writable": true,
           "pda": {
             "seeds": [
@@ -251,7 +251,7 @@
           }
         },
         {
-          "name": "stake_vault_v2",
+          "name": "stake_vault_v3",
           "writable": true,
           "pda": {
             "seeds": [
@@ -278,7 +278,7 @@
           }
         },
         {
-          "name": "reward_vault_v2",
+          "name": "reward_vault_v3",
           "writable": true,
           "pda": {
             "seeds": [
@@ -502,7 +502,7 @@
           }
         },
         {
-          "name": "stake_vault_v2",
+          "name": "stake_vault_v3",
           "writable": true,
           "pda": {
             "seeds": [
@@ -616,7 +616,7 @@
           }
         },
         {
-          "name": "stake_vault_v2",
+          "name": "stake_vault_v3",
           "writable": true,
           "pda": {
             "seeds": [
