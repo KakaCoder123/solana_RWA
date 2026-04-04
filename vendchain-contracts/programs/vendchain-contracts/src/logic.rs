@@ -86,8 +86,7 @@ pub fn request_unstake(ctx: Context<RequestUnstake>, amount: u64) -> Result<()> 
 
     ctx.accounts.staking_pool.total_staked = ctx.accounts.staking_pool
         .total_staked
-        .checked_sub(amount)
-        .ok_or(VendError::Overflow)?;
+        .saturating_sub(amount);
 
     let req = &mut ctx.accounts.unstake_request;
     req.owner = ctx.accounts.owner.key();
