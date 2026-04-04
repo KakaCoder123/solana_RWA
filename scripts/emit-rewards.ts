@@ -83,7 +83,7 @@ async function main() {
 
   // Проверяем баланс deployer кошелька
   const [rewardVault] = PublicKey.findProgramAddressSync(
-    [Buffer.from('reward_vault_v2')], PROGRAM_ID
+    [Buffer.from('reward_vault_v3')], PROGRAM_ID
   )
   const payerAta = await getOrCreateAssociatedTokenAccount(conn, payer, VEND_MINT, payer.publicKey)
   console.log(`Payer VEND balance: ${Number(payerAta.amount) / DECIMALS}`)

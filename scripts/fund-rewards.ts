@@ -1,5 +1,5 @@
 /**
- * Transfer VEND tokens from deployer wallet into the staking reward_vault_v2
+ * Transfer VEND tokens from deployer wallet into the staking reward_vault_v3
  * so that users can claim staking rewards.
  *
  * Usage: npx tsx scripts/fund-rewards.ts
@@ -41,12 +41,12 @@ async function main() {
 
   console.log("Payer:", payer.publicKey.toBase58());
 
-  // reward_vault_v2 PDA (authority = staking_pool PDA, but it's a token account seeded directly)
+  // reward_vault_v3 PDA (authority = staking_pool PDA, seeded directly)
   const [rewardVault] = PublicKey.findProgramAddressSync(
-    [Buffer.from("reward_vault_v2")],
+    [Buffer.from("reward_vault_v3")],
     PROGRAM_ID
   );
-  console.log("reward_vault_v2:", rewardVault.toBase58());
+  console.log("reward_vault_v3:", rewardVault.toBase58());
 
   // Get payer's VEND token account
   const payerAta = await getOrCreateAssociatedTokenAccount(
