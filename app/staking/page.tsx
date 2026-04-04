@@ -129,7 +129,7 @@ export default function StakingPage() {
           </h1>
           <p style={{ fontSize: 16, color: '#64748b', lineHeight: 1.75, maxWidth: 460 }}>
             Commit your VEND assets to secure the decentralized vending ecosystem.
-            Real on-chain rewards — 7-day lockup, linear accrual.
+            Real on-chain rewards — 1 min lockup, linear accrual.
           </p>
           {/* On-chain badge */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 20 }}>
@@ -259,7 +259,7 @@ export default function StakingPage() {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 28 }}>
                 {[
-                  { label: 'LOCKUP', value: '7 Days', color: '#fff' },
+                  { label: 'LOCKUP', value: '1 Min', color: '#fff' },
                   { label: 'APY', value: loading ? '—' : `${apyPercent.toFixed(1)}%`, color: '#14F195' },
                   { label: 'MIN. STAKE', value: tier.minStake, color: '#fff' },
                 ].map(({ label, value, color }) => (
@@ -322,7 +322,7 @@ export default function StakingPage() {
               padding: '10px 14px', borderRadius: 8,
               background: 'rgba(99,102,241,0.15)', border: '1px solid #6366f1',
               fontSize: 13, fontWeight: 700, color: '#fff',
-            }}>7 Days (on-chain lockup)</div>
+            }}>1 Min (on-chain lockup)</div>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
@@ -453,7 +453,7 @@ export default function StakingPage() {
                       <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#FFB800', display: 'inline-block' }} />
                       <span style={{ fontSize: 13, fontWeight: 800, color: '#FFB800' }}>UNSTAKING</span>
                     </div>
-                    <div style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>7-day lockup</div>
+                    <div style={{ fontSize: 11, color: '#475569', fontFamily: 'monospace' }}>1 min lockup</div>
                   </div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 700 }}>{fmtVend(unstakeRequest.amount)} VEND</div>
@@ -517,7 +517,7 @@ export default function StakingPage() {
               {[
                 { label: 'MIN. STAKE', value: stakeModal.minStake },
                 { label: 'APY', value: `${apyPercent.toFixed(1)}%`, color: '#14F195' },
-                { label: 'LOCKUP', value: '7 days (on-chain)' },
+                { label: 'LOCKUP', value: '1 min (on-chain)' },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between' }}>
                   <span style={{ color: '#475569', fontWeight: 600 }}>{label}</span>
