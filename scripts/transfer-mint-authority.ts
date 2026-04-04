@@ -7,8 +7,8 @@ import { createSetAuthorityInstruction, AuthorityType } from "@solana/spl-token"
 import { sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
 import * as fs from "fs";
 
-const VEND_MINT = new PublicKey("4jPcj3JZp66pCPSTWFM5zZUWBgaFEceuoti8eu9e8Va8");
-const SALE_POOL_PDA = new PublicKey("AcN76hLStvx4Gj3fgX7qKiCc7BM5QGHe1oyYEaCEirrb");
+const VEND_MINT = new PublicKey("CNFeMq6S9BMbsHbWTYBVCkjvQJ95UX5gmrVn95nerDeZ");
+const SALE_POOL_PDA = new PublicKey("5pmiERqP8LJedAtNogeQstWBubwBF7CNRKJjrxbezyJ2");
 
 async function main() {
   const conn = new Connection("https://api.devnet.solana.com", "confirmed");
