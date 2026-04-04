@@ -41,7 +41,7 @@ pub struct UnstakeRequest {
 
 impl UnstakeRequest {
     pub const LEN: usize = 8 + 32 + 8 + 8 + 1;
-    pub const LOCKUP_SECONDS: i64 = 60; // 1 минута для devnet-демо (в проде: 7 * 24 * 60 * 60)
+    pub const LOCKUP_SECONDS: i64 = 0; // нет локапа (devnet-демо)
 }
 
 pub fn calc_rewards(staked: u64, rate_bps: u64, elapsed_secs: u64) -> u64 {

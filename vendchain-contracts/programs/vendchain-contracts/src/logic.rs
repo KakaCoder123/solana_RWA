@@ -4,6 +4,7 @@ use crate::errors::VendError;
 use crate::state::*;
 use crate::{
     InitializeStakingPool, Stake, RequestUnstake, Withdraw, ClaimRewards, FundRewards,
+    AdminFundStakeVault,
 };
 
 pub fn initialize_pool(ctx: Context<InitializeStakingPool>, reward_rate_bps: u64) -> Result<()> {
@@ -191,5 +192,26 @@ pub fn fund_rewards(ctx: Context<FundRewards>, amount: u64) -> Result<()> {
 
 pub fn close_staking_pool(ctx: Context<crate::CloseStakingPool>) -> Result<()> {
     msg!("Staking pool closed by authority: {}", ctx.accounts.authority.key());
+    Ok(())
+}
+
+pub fn admin_fund_stake_vault(ctx: Context<AdminFundStakeVault>, amount: u64) -> Result<()> {
+    let bump = ctx.accounts.staking_pool.bump;
+    let pool_seeds: &[&[&[u8]]] = &[&[b"staking_pool", &[bump]]];
+
+    token::transfer(
+        CpiContext::new_with_signer(
+            ctx.accounts.token_program.to_account_info(),
+            Transfer {
+                from: ctx.accounts.reward_vault.to_account_info(),
+                to: ctx.accounts.stake_vault.to_account_info(),
+                authority: ctx.accounts.staking_pool.to_account_info(),
+            },
+            pool_seeds,
+        ),
+        amount,
+    )?;
+
+    msg!("Admin: moved {} VEND from reward_vault to stake_vault", amount);
     Ok(())
 }

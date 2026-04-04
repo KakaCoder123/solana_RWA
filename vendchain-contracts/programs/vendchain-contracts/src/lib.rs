@@ -45,6 +45,11 @@ pub mod vendchain_contracts {
     pub fn close_staking_pool(ctx: Context<CloseStakingPool>) -> Result<()> {
         logic::close_staking_pool(ctx)
     }
+
+    /// Admin: перекинуть VEND из reward_vault в stake_vault (исправить дисбаланс)
+    pub fn admin_fund_stake_vault(ctx: Context<AdminFundStakeVault>, amount: u64) -> Result<()> {
+        logic::admin_fund_stake_vault(ctx, amount)
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -290,4 +295,33 @@ pub struct CloseStakingPool<'info> {
         bump = staking_pool.bump,
     )]
     pub staking_pool: Account<'info, StakingPool>,
+}
+
+#[derive(Accounts)]
+pub struct AdminFundStakeVault<'info> {
+    #[account(mut, constraint = authority.key() == staking_pool.authority @ VendError::InvalidOwner)]
+    pub authority: Signer<'info>,
+
+    #[account(mut, seeds = [b"staking_pool"], bump = staking_pool.bump)]
+    pub staking_pool: Account<'info, StakingPool>,
+
+    #[account(
+        mut,
+        seeds = [b"stake_vault_v2"],
+        bump = staking_pool.stake_vault_bump,
+        token::mint = staking_pool.vend_mint,
+        token::authority = staking_pool,
+    )]
+    pub stake_vault: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        seeds = [b"reward_vault_v2"],
+        bump = staking_pool.reward_vault_bump,
+        token::mint = staking_pool.vend_mint,
+        token::authority = staking_pool,
+    )]
+    pub reward_vault: Account<'info, TokenAccount>,
+
+    pub token_program: Program<'info, Token>,
 }
