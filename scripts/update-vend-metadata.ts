@@ -11,7 +11,7 @@ import * as fs from 'fs'
 
 const RPC = 'https://devnet.helius-rpc.com/?api-key=3d77b912-770c-433e-b920-1dac2f9efc39'
 const VEND_MINT = 'CNFeMq6S9BMbsHbWTYBVCkjvQJ95UX5gmrVn95nerDeZ'
-const METADATA_URI = 'https://raw.githubusercontent.com/KakaCoder123/solana_RWA/main/public/vend-metadata.json'
+const METADATA_URI = 'https://gist.githubusercontent.com/KakaCoder123/6715cb42aecd3d36b99381c04e2e34a9/raw/vend-metadata.json'
 
 async function main() {
   const umi = createUmi(RPC).use(mplTokenMetadata())
@@ -32,6 +32,8 @@ async function main() {
     authority: deployer,
     data: {
       ...metadata,
+      name: 'VendChain',
+      symbol: 'VEND',
       uri: METADATA_URI,
     },
   }).sendAndConfirm(umi)
