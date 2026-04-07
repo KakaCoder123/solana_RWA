@@ -7,7 +7,6 @@ import { AnchorProvider, Program, BN } from '@coral-xyz/anchor'
 import { getAssociatedTokenAddressSync, getAccount } from '@solana/spl-token'
 import IDL from '../lib/idl/vendchain_contracts.json'
 import {
-  PROGRAM_ID,
   VEND_LAMPORTS,
   getStakingPoolPda,
   getUserStakePda,
@@ -53,7 +52,7 @@ export function useStaking() {
     return new Program(IDL as any, provider)
   }, [connection, anchorWallet])
 
-  const fetchPool = useCallback(async () => {
+  const fetchPool = useCallback(async (): Promise<PublicKey | null> => {
     // Pool is public — readable without wallet
     const provider = new AnchorProvider(
       connection,
@@ -66,18 +65,21 @@ export function useStaking() {
       const poolPda = getStakingPoolPda()
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const acc = await (program.account as any).stakingPool.fetch(poolPda)
-      setPool({
+      const poolData: PoolData = {
         totalStaked: acc.totalStaked.toNumber() / VEND_LAMPORTS,
         rewardRateBps: acc.rewardRateBps.toNumber(),
         rewardsAvailable: acc.rewardsAvailable.toNumber() / VEND_LAMPORTS,
         vendMint: acc.vendMint,
-      })
+      }
+      setPool(poolData)
+      return acc.vendMint as PublicKey
     } catch {
       setPool(null)
+      return null
     }
   }, [connection])
 
-  const fetchUserData = useCallback(async () => {
+  const fetchUserData = useCallback(async (vendMint?: PublicKey) => {
     if (!publicKey) { setUserStake(null); setUnstakeRequest(null); return }
     const program = getProgram()
     if (!program) return
@@ -93,10 +95,11 @@ export function useStaking() {
       setUserStake(null)
     }
 
-    // Fetch VEND wallet balance
-    if (pool?.vendMint) {
+    // Fetch VEND wallet balance — use passed mint or fall back to pool state
+    const mint = vendMint ?? pool?.vendMint
+    if (mint) {
       try {
-        const ata = getAssociatedTokenAddressSync(pool.vendMint, publicKey)
+        const ata = getAssociatedTokenAddressSync(mint, publicKey)
         const ataAcc = await getAccount(connection, ata)
         setVendBalance(Number(ataAcc.amount) / VEND_LAMPORTS)
       } catch {
@@ -118,11 +121,12 @@ export function useStaking() {
     } catch {
       setUnstakeRequest(null)
     }
-  }, [publicKey, getProgram])
+  }, [publicKey, getProgram, pool?.vendMint, connection])
 
   const refresh = useCallback(async () => {
     setLoading(true)
-    await Promise.all([fetchPool(), fetchUserData()])
+    const vendMint = await fetchPool()
+    await fetchUserData(vendMint ?? undefined)
     setLoading(false)
   }, [fetchPool, fetchUserData])
 

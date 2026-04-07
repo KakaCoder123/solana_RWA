@@ -26,7 +26,7 @@ const T = {
     form: {
       title: 'Застейкать VEND',
       label: 'Количество VEND', min: `Мин. ${MIN_VEND} VEND`,
-      apy: 'Доходность', lockup: 'Блокировка', lockupVal: '7 дней',
+      apy: 'Доходность', lockup: 'Блокировка', lockupVal: 'Нет',
       type: 'Тип', typeVal: 'Staking reward',
       btn: 'Застейкать', loading: 'Отправка...',
       note: 'Подписывается вашим Solana-кошельком',
@@ -48,7 +48,7 @@ const T = {
     form: {
       title: 'Stake VEND',
       label: 'VEND amount', min: `Min. ${MIN_VEND} VEND`,
-      apy: 'Yield', lockup: 'Lock period', lockupVal: '7 days',
+      apy: 'Yield', lockup: 'Lock period', lockupVal: 'None',
       type: 'Type', typeVal: 'Staking reward',
       btn: 'Stake', loading: 'Sending...',
       note: 'Signed with your Solana wallet',
