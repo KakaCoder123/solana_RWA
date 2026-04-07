@@ -1,9 +1,72 @@
 'use client'
 
 import { useWallet } from '@solana/wallet-adapter-react'
-import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import NavBar from '@/components/NavBar'
+
+type Lang = 'ru' | 'en'
+
+const T = {
+  ru: {
+    welcome: 'Добро пожаловать',
+    title: 'Кабинет инвестора',
+    poolShare: 'Ваша доля в пуле',
+    stats: {
+      balance: 'Баланс токенов',
+      pending: 'К выплате',
+      earned: 'Всего заработано',
+      poolDay: 'Доход пула / день',
+      from: 'от',
+      machines: 'автоматов',
+    },
+    claim: {
+      label: 'Накопленные награды',
+      sub: 'Обновляется с каждой продажей автомата',
+      processing: 'Обработка...',
+      success: '✅ Получено!',
+      btn: '💸 Забрать доход',
+    },
+    machinesTitle: 'Автоматы в сети',
+    machinesOnline: 'онлайн',
+    sales: 'продаж',
+    liveFeed: 'Live продажи',
+    onChain: 'on-chain',
+    buyTitle: '💎 Увеличить долю',
+    buyLabels: ['Старт', 'Популярный', 'Максимум'],
+    buyBtn: 'Купить',
+    buyAlert: 'Покупка токенов — интеграция со смарт-контрактом в разработке',
+  },
+  en: {
+    welcome: 'Welcome',
+    title: 'Investor Dashboard',
+    poolShare: 'Your pool share',
+    stats: {
+      balance: 'Token balance',
+      pending: 'Pending rewards',
+      earned: 'Total earned',
+      poolDay: 'Pool revenue / day',
+      from: 'from',
+      machines: 'machines',
+    },
+    claim: {
+      label: 'Accumulated rewards',
+      sub: 'Updates with every machine sale',
+      processing: 'Processing...',
+      success: '✅ Claimed!',
+      btn: '💸 Claim revenue',
+    },
+    machinesTitle: 'Machines online',
+    machinesOnline: 'online',
+    sales: 'sales',
+    liveFeed: 'Live sales',
+    onChain: 'on-chain',
+    buyTitle: '💎 Increase stake',
+    buyLabels: ['Starter', 'Popular', 'Maximum'],
+    buyBtn: 'Buy',
+    buyAlert: 'Token purchase — smart contract integration in progress',
+  },
+} as const
 
 // Mock data — will be replaced with real Solana data
 const MOCK_MACHINES = [
@@ -21,30 +84,26 @@ const MOCK_TRANSACTIONS = [
   { time: '13:55', machine: 'VM-ALM-003', item: 'Snickers', amount: 380, currency: '₸' },
 ]
 
-function shortAddress(address: string) {
-  return `${address.slice(0, 4)}...${address.slice(-4)}`
-}
-
 export default function InvestorPage() {
-  const { connected, publicKey, disconnect } = useWallet()
-  const { setVisible } = useWalletModal()
+  const { connected, publicKey } = useWallet()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
-  const [vendBalance, setVendBalance] = useState(500)
+  const [lang, setLang] = useState<Lang>('ru')
+  const [vendBalance] = useState(500)
   const [pendingRewards, setPendingRewards] = useState(0.0234)
   const [totalEarned, setTotalEarned] = useState(0.1847)
   const [liveTransactions, setLiveTransactions] = useState(MOCK_TRANSACTIONS)
   const [claiming, setClaiming] = useState(false)
   const [claimSuccess, setClaimSuccess] = useState(false)
 
+  const c = T[lang]
+
   useEffect(() => { setMounted(true) }, [])
 
-  // Redirect if not connected
   useEffect(() => {
     if (mounted && !connected) router.push('/')
   }, [connected, mounted, router])
 
-  // Simulate live incoming transactions
   useEffect(() => {
     const items = ['Coca-Cola 0.5л', 'Sprite', 'Питьевая вода', 'Red Bull', 'Lays', 'Snickers', 'Twix', 'Bounty']
     const machines = MOCK_MACHINES.map(m => m.id)
@@ -59,7 +118,6 @@ export default function InvestorPage() {
       const newTx = { time, machine, item, amount, currency: '₸' }
       setLiveTransactions(prev => [newTx, ...prev.slice(0, 9)])
 
-      // Simulate reward accumulation
       const userShare = vendBalance / 10000
       const txRevenue = amount / 500 * 0.001
       setPendingRewards(prev => +(prev + txRevenue * userShare).toFixed(6))
@@ -83,48 +141,27 @@ export default function InvestorPage() {
 
   if (!mounted || !connected) return null
 
+  const BUY_PKGS = [
+    { amount: 100, sol: 0.072, color: '#9945FF' },
+    { amount: 500, sol: 0.35, color: '#14F195' },
+    { amount: 1000, sol: 0.68, color: '#00C2FF' },
+  ]
+
   return (
     <div className="min-h-screen bg-[#0a0a0f]">
-
-      {/* Top Nav */}
-      <nav className="flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/5 glass sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <button onClick={() => router.push('/')} className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9945FF] to-[#14F195] flex items-center justify-center font-black text-white text-sm">V</div>
-            <span className="font-bold hidden sm:block">VendChain</span>
-          </button>
-          <span className="text-gray-600 hidden sm:block">/</span>
-          <span className="text-gray-400 text-sm hidden sm:block">Кабинет инвестора</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="glass rounded-xl px-3 py-2 flex items-center gap-2 text-sm">
-            <span className="w-2 h-2 bg-[#14F195] rounded-full animate-pulse" />
-            <span className="text-gray-400 hidden sm:block">Devnet</span>
-          </div>
-          <div className="glass rounded-xl px-3 py-2 text-sm font-mono text-gray-300">
-            {publicKey ? shortAddress(publicKey.toString()) : ''}
-          </div>
-          <button
-            onClick={() => { disconnect(); router.push('/') }}
-            className="glass rounded-xl px-3 py-2 text-sm text-gray-400 hover:text-red-400 transition-colors"
-          >
-            Выйти
-          </button>
-        </div>
-      </nav>
+      <NavBar lang={lang} onToggleLang={() => setLang(l => l === 'ru' ? 'en' : 'ru')} />
 
       <div className="max-w-7xl mx-auto px-6 md:px-10 py-8">
 
         {/* Welcome Banner */}
         <div className="glass-purple rounded-3xl p-6 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
-            <div className="text-xs text-[#9945FF] font-semibold mb-1 uppercase tracking-wider">Добро пожаловать</div>
-            <h1 className="text-2xl font-black mb-1">Кабинет инвестора</h1>
+            <div className="text-xs text-[#9945FF] font-semibold mb-1 uppercase tracking-wider">{c.welcome}</div>
+            <h1 className="text-2xl font-black mb-1">{c.title}</h1>
             <p className="text-gray-400 text-sm font-mono">{publicKey?.toString()}</p>
           </div>
           <div className="text-right">
-            <div className="text-sm text-gray-400">Ваша доля в пуле</div>
+            <div className="text-sm text-gray-400">{c.poolShare}</div>
             <div className="text-4xl font-black gradient-text">{userShare}%</div>
             <div className="text-sm text-gray-500">{vendBalance} / 10,000 VEND</div>
           </div>
@@ -133,10 +170,10 @@ export default function InvestorPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
-            { label: 'Баланс токенов', value: `${vendBalance} VEND`, sub: `≈ $${(vendBalance * 0.1).toFixed(2)}`, color: '#9945FF' },
-            { label: 'К выплате', value: `${pendingRewards.toFixed(6)} SOL`, sub: `≈ $${(pendingRewards * 140).toFixed(4)}`, color: '#14F195' },
-            { label: 'Всего заработано', value: `${totalEarned.toFixed(4)} SOL`, sub: `≈ $${(totalEarned * 140).toFixed(2)}`, color: '#00C2FF' },
-            { label: 'Доход пула / день', value: `$${totalPoolRevenue.toFixed(2)}`, sub: 'от 3 автоматов', color: '#FFB800' },
+            { label: c.stats.balance, value: `${vendBalance} VEND`, sub: `≈ $${(vendBalance * 0.1).toFixed(2)}`, color: '#9945FF' },
+            { label: c.stats.pending, value: `${pendingRewards.toFixed(6)} SOL`, sub: `≈ $${(pendingRewards * 140).toFixed(4)}`, color: '#14F195' },
+            { label: c.stats.earned, value: `${totalEarned.toFixed(4)} SOL`, sub: `≈ $${(totalEarned * 140).toFixed(2)}`, color: '#00C2FF' },
+            { label: c.stats.poolDay, value: `$${totalPoolRevenue.toFixed(2)}`, sub: `${c.stats.from} ${MOCK_MACHINES.length} ${c.stats.machines}`, color: '#FFB800' },
           ].map((stat) => (
             <div key={stat.label} className="glass rounded-2xl p-5">
               <div className="text-xs text-gray-500 mb-2">{stat.label}</div>
@@ -149,9 +186,9 @@ export default function InvestorPage() {
         {/* Claim Rewards */}
         <div className="glass rounded-3xl p-6 mb-8 flex flex-col sm:flex-row items-center justify-between gap-5">
           <div>
-            <div className="text-sm text-gray-400 mb-1">Накопленные награды</div>
+            <div className="text-sm text-gray-400 mb-1">{c.claim.label}</div>
             <div className="text-3xl font-black text-[#14F195]">{pendingRewards.toFixed(6)} SOL</div>
-            <div className="text-xs text-gray-600 mt-1">Обновляется с каждой продажей автомата</div>
+            <div className="text-xs text-gray-600 mt-1">{c.claim.sub}</div>
           </div>
           <button
             onClick={handleClaim}
@@ -161,9 +198,9 @@ export default function InvestorPage() {
             {claiming ? (
               <span className="flex items-center gap-2 justify-center">
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Обработка...
+                {c.claim.processing}
               </span>
-            ) : claimSuccess ? '✅ Получено!' : '💸 Забрать доход'}
+            ) : claimSuccess ? c.claim.success : c.claim.btn}
           </button>
         </div>
 
@@ -172,8 +209,8 @@ export default function InvestorPage() {
           {/* Machines Status */}
           <div className="glass rounded-3xl p-6">
             <h2 className="text-lg font-black mb-5 flex items-center gap-2">
-              🏧 <span>Автоматы в сети</span>
-              <span className="ml-auto text-xs glass px-2 py-1 rounded-full text-[#14F195]">3 онлайн</span>
+              🏧 <span>{c.machinesTitle}</span>
+              <span className="ml-auto text-xs glass px-2 py-1 rounded-full text-[#14F195]">{MOCK_MACHINES.length} {c.machinesOnline}</span>
             </h2>
             <div className="space-y-3">
               {MOCK_MACHINES.map((m) => (
@@ -185,7 +222,7 @@ export default function InvestorPage() {
                   </div>
                   <div className="text-right flex-shrink-0">
                     <div className="text-[#14F195] font-bold text-sm">+${m.todayRevenue.toFixed(2)}</div>
-                    <div className="text-xs text-gray-600">{m.sales} продаж</div>
+                    <div className="text-xs text-gray-600">{m.sales} {c.sales}</div>
                   </div>
                   <div className="w-2 h-2 bg-[#14F195] rounded-full animate-pulse flex-shrink-0" />
                 </div>
@@ -196,10 +233,10 @@ export default function InvestorPage() {
           {/* Live Sales Feed */}
           <div className="glass rounded-3xl p-6">
             <h2 className="text-lg font-black mb-5 flex items-center gap-2">
-              ⚡ <span>Live продажи</span>
+              ⚡ <span>{c.liveFeed}</span>
               <span className="ml-auto flex items-center gap-1 text-xs text-[#14F195]">
                 <span className="w-2 h-2 bg-[#14F195] rounded-full animate-pulse" />
-                on-chain
+                {c.onChain}
               </span>
             </h2>
             <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
@@ -220,22 +257,18 @@ export default function InvestorPage() {
 
         {/* Buy More Tokens */}
         <div className="glass rounded-3xl p-6">
-          <h2 className="text-lg font-black mb-5">💎 Увеличить долю</h2>
+          <h2 className="text-lg font-black mb-5">{c.buyTitle}</h2>
           <div className="grid sm:grid-cols-3 gap-4">
-            {[
-              { amount: 100, sol: 0.072, label: 'Старт', color: '#9945FF' },
-              { amount: 500, sol: 0.35, label: 'Популярный', color: '#14F195' },
-              { amount: 1000, sol: 0.68, label: 'Максимум', color: '#00C2FF' },
-            ].map((pkg) => (
+            {BUY_PKGS.map((pkg, i) => (
               <div key={pkg.amount} className="glass rounded-2xl p-5 text-center hover:border-[#9945FF]/40 transition-all cursor-pointer group">
-                <div className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: pkg.color }}>{pkg.label}</div>
+                <div className="text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: pkg.color }}>{c.buyLabels[i]}</div>
                 <div className="text-3xl font-black mb-1">{pkg.amount} <span className="text-lg">VEND</span></div>
                 <div className="text-gray-400 text-sm mb-4">{pkg.sol} SOL ≈ ${(pkg.sol * 140).toFixed(0)}</div>
                 <button
                   className="btn-primary w-full py-2.5 text-sm group-hover:opacity-90"
-                  onClick={() => alert('Покупка токенов — интеграция со смарт-контрактом в разработке')}
+                  onClick={() => alert(c.buyAlert)}
                 >
-                  Купить
+                  {c.buyBtn}
                 </button>
               </div>
             ))}

@@ -6,6 +6,91 @@ import { useRouter } from 'next/navigation'
 import NavBar from '../../components/NavBar'
 import { useMachines, type MachineStatus, type Machine } from '../../hooks/useMachines'
 
+type Lang = 'ru' | 'en'
+
+const T = {
+  ru: {
+    connecting: 'ПОДКЛЮЧЕНИЕ...',
+    totalFleet: 'ВСЕГО МАШИН',
+    liveRevenue: 'ВЫРУЧКА LIVE',
+    activeNow: 'АКТИВНО СЕЙЧАС',
+    suggestBtn: 'Предложить локацию',
+    filters: 'ФИЛЬТРЫ',
+    searchPlaceholder: 'Поиск по ID или городу...',
+    statusAll: 'Статус: Все',
+    statusOnline: 'Онлайн',
+    statusOffline: 'Офлайн',
+    statusMaintenance: 'Обслуживание',
+    sortProfit: 'Сорт: Прибыль',
+    sortUptime: 'Сорт: Аптайм',
+    sortId: 'Сорт: ID',
+    activeViewport: 'АКТИВНО В ОБЛАСТИ',
+    today: 'СЕГОДНЯ',
+    offline: 'ОФЛАЙН',
+    dailyAvg: 'Ср/день:',
+    activeNode: 'АКТИВНЫЙ УЗЕЛ',
+    status: 'СТАТУС',
+    uptime: 'АПТАЙМ',
+    statusHealthy: 'Работает',
+    statusInRepair: 'Ремонт',
+    statusDown: 'Недоступен',
+    weekChart: '7-ДНЕВНАЯ ВЫРУЧКА',
+    weekTotal: 'итого',
+    topProducts: 'ТОП ПРОДУКТЫ',
+    accessTerminal: 'ОТКРЫТЬ ТЕРМИНАЛ',
+    suggestTitle: 'Предложить локацию',
+    suggestSub: 'Помогите расширить сеть VendChain, предложив место с высокой проходимостью.',
+    suggestPlace: 'Название / адрес',
+    suggestCity: 'Город, Страна',
+    suggestWhy: 'Почему это хорошая локация? (трафик, демография…)',
+    suggestCancel: 'Отмена',
+    suggestSubmit: 'Отправить',
+    suggestDoneTitle: 'Предложение отправлено',
+    suggestDoneSub: 'Наша команда рассмотрит вашу локацию. Спасибо за помощь в развитии сети VendChain.',
+    suggestDoneClose: 'Закрыть',
+  },
+  en: {
+    connecting: 'CONNECTING...',
+    totalFleet: 'TOTAL FLEET',
+    liveRevenue: 'LIVE REVENUE',
+    activeNow: 'ACTIVE NOW',
+    suggestBtn: 'Suggest Location',
+    filters: 'FILTERS',
+    searchPlaceholder: 'Search machine ID or City...',
+    statusAll: 'Status: All',
+    statusOnline: 'Online',
+    statusOffline: 'Offline',
+    statusMaintenance: 'Maintenance',
+    sortProfit: 'Sort: Profit',
+    sortUptime: 'Sort: Uptime',
+    sortId: 'Sort: ID',
+    activeViewport: 'ACTIVE IN VIEWPORT',
+    today: 'TODAY',
+    offline: 'OFFLINE',
+    dailyAvg: 'Daily Avg:',
+    activeNode: 'ACTIVE NODE',
+    status: 'STATUS',
+    uptime: 'UPTIME',
+    statusHealthy: 'Healthy',
+    statusInRepair: 'In Repair',
+    statusDown: 'Down',
+    weekChart: '7-DAY REVENUE TREND',
+    weekTotal: 'total',
+    topProducts: 'TOP PRODUCTS',
+    accessTerminal: 'ACCESS MACHINE TERMINAL',
+    suggestTitle: 'Suggest a Location',
+    suggestSub: 'Help expand the VendChain network by suggesting a high-traffic location.',
+    suggestPlace: 'Location name / address',
+    suggestCity: 'City, Country',
+    suggestWhy: 'Why is this a good location? (foot traffic, demographics…)',
+    suggestCancel: 'Cancel',
+    suggestSubmit: 'Submit Suggestion',
+    suggestDoneTitle: 'Suggestion Submitted',
+    suggestDoneSub: 'Our team will review your location suggestion. Thank you for helping grow the VendChain network.',
+    suggestDoneClose: 'Close',
+  },
+} as const
+
 // Координаты на карте для каждой машины (фиксированные, не on-chain)
 const MAP_POS: Record<string, { mx: number; my: number }> = {
   'VC-9928': { mx: 80, my: 36 },
@@ -15,8 +100,6 @@ const MAP_POS: Record<string, { mx: number; my: number }> = {
   'VC-5501': { mx: 63, my: 33 },
   'VC-3317': { mx: 60, my: 41 },
 }
-
-// Заглушка — убрать когда реальный массив не нужен
 
 const STATUS_COLOR: Record<MachineStatus, string> = {
   ONLINE: '#14F195',
@@ -53,6 +136,7 @@ export default function MachinesPage() {
   const router = useRouter()
   const { machines, loading: machinesLoading } = useMachines()
   const [mounted, setMounted] = useState(false)
+  const [lang, setLang] = useState<Lang>('ru')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'All' | MachineStatus>('All')
   const [sortBy, setSortBy] = useState<'Profit' | 'Uptime' | 'ID'>('Profit')
@@ -60,6 +144,8 @@ export default function MachinesPage() {
   const [liveRevenue, setLiveRevenue] = useState(42800)
   const [suggestOpen, setSuggestOpen] = useState(false)
   const [suggestSubmitted, setSuggestSubmitted] = useState(false)
+
+  const c = T[lang]
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -77,7 +163,7 @@ export default function MachinesPage() {
   if (!mounted || connecting) {
     return (
       <div style={{ minHeight: '100vh', background: '#0a0a0f', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ color: '#6366f1', fontSize: 14, fontWeight: 600, letterSpacing: 1 }}>CONNECTING...</div>
+        <div style={{ color: '#6366f1', fontSize: 14, fontWeight: 600, letterSpacing: 1 }}>{c.connecting}</div>
       </div>
     )
   }
@@ -97,15 +183,16 @@ export default function MachinesPage() {
     })
 
   const totalFleet = machinesLoading ? '...' : machines.length
-  const onlineCount = machines.filter(m => m.status === 'ONLINE').length
+  const DAYS = lang === 'ru'
+    ? ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+    : ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
   const maxWeekRev = selected ? Math.max(...selected.weekRevenue, 1) : 1
   const weekTotal = selected ? selected.weekRevenue.reduce((a, b) => a + b, 0) : 0
-  const DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
 
   return (
     <div style={{ minHeight: '100vh', background: '#0a0a0f', color: '#e2e8f0', fontFamily: "'Inter', sans-serif" }}>
-      <NavBar />
+      <NavBar lang={lang} onToggleLang={() => setLang(l => l === 'ru' ? 'en' : 'ru')} />
 
       <div style={{ maxWidth: 1280, margin: '0 auto', padding: '28px 24px' }}>
 
@@ -113,12 +200,12 @@ export default function MachinesPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr auto', gap: 14, marginBottom: 20 }}>
 
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderLeft: '3px solid #6366f1', borderRadius: 12, padding: '18px 22px' }}>
-            <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>TOTAL FLEET</div>
+            <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>{c.totalFleet}</div>
             <div style={{ fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1 }}>{totalFleet}</div>
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '18px 22px' }}>
-            <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>LIVE REVENUE</div>
+            <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>{c.liveRevenue}</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
               <span style={{ fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1 }}>${(liveRevenue / 1000).toFixed(1)}K</span>
               <span style={{ fontSize: 11, color: '#14F195', fontWeight: 600 }}>↗ +12%</span>
@@ -126,7 +213,7 @@ export default function MachinesPage() {
           </div>
 
           <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '18px 22px' }}>
-            <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>ACTIVE NOW</div>
+            <div style={{ fontSize: 10, color: '#475569', fontWeight: 600, letterSpacing: 1, marginBottom: 6 }}>{c.activeNow}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ fontSize: 30, fontWeight: 700, color: '#fff', lineHeight: 1 }}>1,202</span>
               <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#14F195', display: 'inline-block', flexShrink: 0, animation: 'pulse-dot 1.4s ease-in-out infinite' }} />
@@ -146,7 +233,7 @@ export default function MachinesPage() {
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)' }}
             >
               <span style={{ fontSize: 16 }}>📍</span>
-              Suggest Location
+              {c.suggestBtn}
             </button>
           </div>
         </div>
@@ -160,14 +247,14 @@ export default function MachinesPage() {
             {/* Filters */}
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2 }}>FILTERS</span>
+                <span style={{ fontSize: 12, fontWeight: 800, letterSpacing: 1.2 }}>{c.filters}</span>
                 <span style={{ color: '#475569', fontSize: 16, cursor: 'pointer' }}>⊞</span>
               </div>
 
               <div style={{ position: 'relative', marginBottom: 10 }}>
                 <span style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#475569', fontSize: 13 }}>⌕</span>
                 <input
-                  placeholder="Search machine ID or City..."
+                  placeholder={c.searchPlaceholder}
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   style={{
@@ -184,19 +271,19 @@ export default function MachinesPage() {
                   onChange={e => setStatusFilter(e.target.value as 'All' | MachineStatus)}
                   style={{ padding: '7px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#94a3b8', fontSize: 11, outline: 'none', cursor: 'pointer' }}
                 >
-                  <option value="All">Status: All</option>
-                  <option value="ONLINE">Online</option>
-                  <option value="OFFLINE">Offline</option>
-                  <option value="MAINTENANCE">Maintenance</option>
+                  <option value="All">{c.statusAll}</option>
+                  <option value="ONLINE">{c.statusOnline}</option>
+                  <option value="OFFLINE">{c.statusOffline}</option>
+                  <option value="MAINTENANCE">{c.statusMaintenance}</option>
                 </select>
                 <select
                   value={sortBy}
                   onChange={e => setSortBy(e.target.value as 'Profit' | 'Uptime' | 'ID')}
                   style={{ padding: '7px 8px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, color: '#94a3b8', fontSize: 11, outline: 'none', cursor: 'pointer' }}
                 >
-                  <option value="Profit">Sort: Profit</option>
-                  <option value="Uptime">Sort: Uptime</option>
-                  <option value="ID">Sort: ID</option>
+                  <option value="Profit">{c.sortProfit}</option>
+                  <option value="Uptime">{c.sortUptime}</option>
+                  <option value="ID">{c.sortId}</option>
                 </select>
               </div>
             </div>
@@ -205,7 +292,7 @@ export default function MachinesPage() {
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, overflow: 'hidden', flex: 1 }}>
               <div style={{ padding: '11px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                 <span style={{ fontSize: 10, fontWeight: 700, color: '#475569', letterSpacing: 0.8 }}>
-                  {filtered.length} ACTIVE IN VIEWPORT
+                  {filtered.length} {c.activeViewport}
                 </span>
               </div>
               <div style={{ maxHeight: 490, overflowY: 'auto' }}>
@@ -230,7 +317,7 @@ export default function MachinesPage() {
                           color: STATUS_COLOR[m.status],
                           border: `1px solid ${m.status === 'ONLINE' ? 'rgba(20,241,149,0.18)' : m.status === 'MAINTENANCE' ? 'rgba(245,158,11,0.18)' : 'rgba(239,68,68,0.18)'}`,
                         }}>
-                          {m.status}
+                          {m.status === 'ONLINE' ? c.statusOnline : m.status === 'MAINTENANCE' ? c.statusMaintenance : c.statusOffline}
                         </span>
                       </div>
                       <span style={{ fontSize: 13, fontWeight: 700, color: m.today > 0 ? '#fff' : '#334155' }}>
@@ -240,10 +327,10 @@ export default function MachinesPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                       <div>
                         <div style={{ fontSize: 12, fontWeight: 600, color: '#cbd5e1' }}>{m.name}</div>
-                        <div style={{ fontSize: 10, color: '#475569', marginTop: 1 }}>Daily Avg: ${m.dailyAvg.toLocaleString()}.00</div>
+                        <div style={{ fontSize: 10, color: '#475569', marginTop: 1 }}>{c.dailyAvg} ${m.dailyAvg.toLocaleString()}.00</div>
                       </div>
                       <span style={{ fontSize: 10, fontWeight: 600, color: m.today > 0 ? '#14F195' : '#ef4444' }}>
-                        {m.today > 0 ? 'TODAY' : 'OFFLINE'}
+                        {m.today > 0 ? c.today : c.offline}
                       </span>
                     </div>
                   </div>
@@ -312,7 +399,9 @@ export default function MachinesPage() {
                 {(['ONLINE', 'OFFLINE', 'MAINTENANCE'] as MachineStatus[]).map(s => (
                   <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                     <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[s], display: 'inline-block' }} />
-                    <span style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 600 }}>{s}</span>
+                    <span style={{ fontSize: 9.5, color: '#94a3b8', fontWeight: 600 }}>
+                      {s === 'ONLINE' ? c.statusOnline : s === 'MAINTENANCE' ? c.statusMaintenance : c.statusOffline}
+                    </span>
                   </div>
                 ))}
               </div>
@@ -337,7 +426,7 @@ export default function MachinesPage() {
               }}>
                 {/* Header */}
                 <div>
-                  <div style={{ fontSize: 10, color: '#6366f1', fontWeight: 700, letterSpacing: 1.2, marginBottom: 8 }}>ACTIVE NODE</div>
+                  <div style={{ fontSize: 10, color: '#6366f1', fontWeight: 700, letterSpacing: 1.2, marginBottom: 8 }}>{c.activeNode}</div>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ fontSize: 17, fontWeight: 900, color: '#fff', letterSpacing: 0.3 }}>#{selected.id} {selected.name.toUpperCase()}</div>
@@ -353,16 +442,16 @@ export default function MachinesPage() {
                 {/* Status + Uptime */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                   <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '11px 13px' }}>
-                    <div style={{ fontSize: 9, color: '#475569', fontWeight: 700, letterSpacing: 0.8, marginBottom: 6 }}>STATUS</div>
+                    <div style={{ fontSize: 9, color: '#475569', fontWeight: 700, letterSpacing: 0.8, marginBottom: 6 }}>{c.status}</div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <span style={{ width: 6, height: 6, borderRadius: '50%', background: STATUS_COLOR[selected.status], display: 'inline-block' }} />
                       <span style={{ fontSize: 13, fontWeight: 700, color: STATUS_COLOR[selected.status] }}>
-                        {selected.status === 'ONLINE' ? 'Healthy' : selected.status === 'MAINTENANCE' ? 'In Repair' : 'Down'}
+                        {selected.status === 'ONLINE' ? c.statusHealthy : selected.status === 'MAINTENANCE' ? c.statusInRepair : c.statusDown}
                       </span>
                     </div>
                   </div>
                   <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '11px 13px' }}>
-                    <div style={{ fontSize: 9, color: '#475569', fontWeight: 700, letterSpacing: 0.8, marginBottom: 6 }}>UPTIME</div>
+                    <div style={{ fontSize: 9, color: '#475569', fontWeight: 700, letterSpacing: 0.8, marginBottom: 6 }}>{c.uptime}</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#fff' }}>{selected.uptime.toFixed(2)}%</div>
                   </div>
                 </div>
@@ -370,8 +459,8 @@ export default function MachinesPage() {
                 {/* 7-day bar chart */}
                 <div style={{ background: 'rgba(255,255,255,0.04)', borderRadius: 8, padding: '13px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                    <span style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 0.8 }}>7-DAY REVENUE TREND</span>
-                    <span style={{ fontSize: 11, color: '#14F195', fontWeight: 700 }}>+${weekTotal.toFixed(2)} total</span>
+                    <span style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 0.8 }}>{c.weekChart}</span>
+                    <span style={{ fontSize: 11, color: '#14F195', fontWeight: 700 }}>+${weekTotal.toFixed(2)} {c.weekTotal}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'flex-end', gap: 5, height: 76 }}>
                     {selected.weekRevenue.map((rev, i) => (
@@ -391,7 +480,7 @@ export default function MachinesPage() {
 
                 {/* Top products */}
                 <div>
-                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 0.8, marginBottom: 10 }}>TOP PRODUCTS</div>
+                  <div style={{ fontSize: 10, color: '#475569', fontWeight: 700, letterSpacing: 0.8, marginBottom: 10 }}>{c.topProducts}</div>
                   {selected.topProducts.map((p, i) => (
                     <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                       <span style={{ fontSize: 12, color: '#94a3b8' }}>{i + 1}. {p.name}</span>
@@ -412,7 +501,7 @@ export default function MachinesPage() {
                   onMouseEnter={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.18)'; e.currentTarget.style.borderColor = 'rgba(99,102,241,0.4)' }}
                   onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,0.13)' }}
                 >
-                  ACCESS MACHINE TERMINAL
+                  {c.accessTerminal}
                 </button>
               </div>
             )}
@@ -433,31 +522,31 @@ export default function MachinesPage() {
             {suggestSubmitted ? (
               <div style={{ textAlign: 'center', padding: '20px 0' }}>
                 <div style={{ fontSize: 36, marginBottom: 14 }}>✓</div>
-                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>Suggestion Submitted</div>
-                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>Our team will review your location suggestion. Thank you for helping grow the VendChain network.</div>
+                <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 8 }}>{c.suggestDoneTitle}</div>
+                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 24 }}>{c.suggestDoneSub}</div>
                 <button
                   onClick={() => { setSuggestOpen(false); setSuggestSubmitted(false) }}
                   style={{ padding: '10px 28px', background: 'rgba(99,102,241,0.15)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, color: '#a5b4fc', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-                >Close</button>
+                >{c.suggestDoneClose}</button>
               </div>
             ) : (
               <>
-                <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 6 }}>Suggest a Location</div>
-                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 20 }}>Help expand the VendChain network by suggesting a high-traffic location.</div>
+                <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 6 }}>{c.suggestTitle}</div>
+                <div style={{ fontSize: 12, color: '#64748b', marginBottom: 20 }}>{c.suggestSub}</div>
 
-                <input placeholder="Location name / address" style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none', marginBottom: 10, boxSizing: 'border-box' }} />
-                <input placeholder="City, Country" style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none', marginBottom: 10, boxSizing: 'border-box' }} />
-                <textarea placeholder="Why is this a good location? (foot traffic, demographics…)" rows={3} style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none', resize: 'none', marginBottom: 18, boxSizing: 'border-box' }} />
+                <input placeholder={c.suggestPlace} style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none', marginBottom: 10, boxSizing: 'border-box' }} />
+                <input placeholder={c.suggestCity} style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none', marginBottom: 10, boxSizing: 'border-box' }} />
+                <textarea placeholder={c.suggestWhy} rows={3} style={{ width: '100%', padding: '10px 14px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#e2e8f0', fontSize: 13, outline: 'none', resize: 'none', marginBottom: 18, boxSizing: 'border-box' }} />
 
                 <div style={{ display: 'flex', gap: 10 }}>
                   <button
                     onClick={() => setSuggestOpen(false)}
                     style={{ flex: 1, padding: '11px', background: 'transparent', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 8, color: '#64748b', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
-                  >Cancel</button>
+                  >{c.suggestCancel}</button>
                   <button
                     onClick={() => setSuggestSubmitted(true)}
                     style={{ flex: 1, padding: '11px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 700 }}
-                  >Submit Suggestion</button>
+                  >{c.suggestSubmit}</button>
                 </div>
               </>
             )}
