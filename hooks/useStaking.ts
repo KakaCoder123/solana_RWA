@@ -121,7 +121,7 @@ export function useStaking() {
     } catch {
       setUnstakeRequest(null)
     }
-  }, [publicKey, getProgram, pool?.vendMint, connection])
+  }, [publicKey, getProgram, connection])
 
   const refresh = useCallback(async () => {
     setLoading(true)
