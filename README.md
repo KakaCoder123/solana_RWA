@@ -4,7 +4,29 @@
 
 VendChain is the first Real World Asset (RWA) tokenization platform on Solana. Users buy VEND tokens to become co-owners of a physical vending machine network and receive automatic revenue share from every sale.
 
-Submitted to **Solana National Hackathon / Decentrathon 2026**.
+**Submitted to Solana National Hackathon / Decentrathon 2026**
+
+🌐 **Live Demo:** [vendchain.vercel.app](https://vendchain.vercel.app/)
+
+---
+
+## Screenshots
+
+| Landing | How it works |
+|---------|-------------|
+| ![Landing](public/screenshots/landing.png) | ![How it works](public/screenshots/how-it-works.png) |
+
+| Machine Network | Investor Profile |
+|----------------|-----------------|
+| ![Machines](public/screenshots/machines.png) | ![Profile](public/screenshots/profile.png) |
+
+| Trade | Staking |
+|-------|---------|
+| ![Trade](public/screenshots/trade.png) | ![Staking](public/screenshots/staking.png) |
+
+| Machine Map | Vending Emulator |
+|-------------|-----------------|
+| ![Map](public/screenshots/machines-map.png) | ![Vending](public/screenshots/vending.png) |
 
 ---
 
@@ -24,6 +46,7 @@ Submitted to **Solana National Hackathon / Decentrathon 2026**.
 3. **Earn daily** — smart contracts automatically distribute revenue; withdraw at any time
 
 **Two ways to earn:**
+
 | Method | APY | Mechanism |
 |--------|-----|-----------|
 | Revenue Share | Variable | Proportional to VEND holdings |
@@ -39,15 +62,15 @@ Submitted to **Solana National Hackathon / Decentrathon 2026**.
 |-----------|--------|----------|-----|
 | Fee per payout | **$0.00025** | $5–50 | $0.05–0.5 |
 | Finalization | **400ms** | 12–60s | 3–5s |
-| $2 sale payout | Profitable | Loss | Borderline |
-| Solana Pay (QR) | Native | No | No |
-| Token-2022 Hooks | Yes | No | No |
+| $2 sale payout | ✅ Profitable | ❌ Loss | ⚠️ Borderline |
+| Solana Pay (QR) | ✅ Native | ❌ No | ❌ No |
+| Token-2022 Hooks | ✅ Yes | ❌ No | ❌ No |
 
 **Concrete Solana features used:**
-- **PDAs (Program Derived Addresses)** — each machine has a deterministic on-chain address derived from `program + seed`. No private key, no database
+- **PDAs (Program Derived Addresses)** — each machine has a deterministic on-chain address: `program + seed`. No private key, no database
 - **SPL Token + Metaplex Metadata** — VEND token with on-chain name, symbol and logo visible in Phantom/Solflare
 - **Anchor Framework** — staking pool, sale pool, machine registry — all on-chain
-- **Solana Pay** — QR payment at the machine, 400ms finalization
+- **Solana Pay** — QR payment at the machine → 400ms finalization → item dispensed
 
 ---
 
@@ -57,49 +80,49 @@ Submitted to **Solana National Hackathon / Decentrathon 2026**.
 User Wallet (Phantom)
         │
         ▼
-  Next.js Frontend
+  Next.js Frontend  ──────────── Supabase
+        │                        (machine DB)
+   Anchor SDK
         │
-   ┌────┴────┐
-   │         │
-Anchor SDK  Supabase
-   │         │
-   ▼         ▼
-Solana     Machine
-Devnet     Registry
-   │
-   ├── vendchain_contracts   (staking pool, rewards)
-   ├── vend_sale             (VEND token sale)
-   └── vend_machine          (machine registry, record_sale)
+        ▼
+   Solana Devnet
+        │
+        ├── vendchain_contracts   (staking pool, rewards)
+        ├── vend_sale             (VEND token sale)
+        └── vend_machine          (machine registry, record_sale)
 ```
 
 **Smart Contracts (Rust / Anchor):**
 - `vendchain_contracts` — staking pool, user stakes, reward distribution
 - `vend_sale` — VEND token sale for SOL, sale vault
-- `vend_machine` — on-chain machine registry, records sales
+- `vend_machine` — on-chain machine registry, records sales per transaction
 
 **Frontend:**
 - Next.js 15 + TypeScript
 - `@coral-xyz/anchor` — smart contract interaction
 - `@solana/wallet-adapter` — Phantom, Solflare, Backpack
+- `framer-motion` — animations
 - Supabase — machine database and real-time status
 
 **Token:**
 - Mint: `CNFeMq6S9BMbsHbWTYBVCkjvQJ95UX5gmrVn95nerDeZ` (Solana Devnet)
-- Standard: SPL Token with Metaplex metadata
+- Standard: SPL Token + Metaplex Metadata
 - Name: **VendChain** · Symbol: **VEND** · Decimals: 6
 - Price: 1 SOL = 1,000 VEND
 
 ---
 
-## Live Demo (Devnet)
+## Pages
 
 | Page | Description |
 |------|-------------|
 | `/` | Landing with live transaction ticker |
-| `/vending` | Buy VEND for SOL (real on-chain tx) |
-| `/staking` | Stake / Unstake / Claim rewards |
-| `/investor` | Investor dashboard with machine network |
-| `/trade` | Secondary market |
+| `/trade` | Buy / Sell VEND for SOL |
+| `/staking` | Stake VEND, claim rewards (real on-chain) |
+| `/investor` | Investor dashboard — machines and revenue |
+| `/machines` | Machine network map with real-time status |
+| `/vending` | Vending machine emulator (real on-chain tx) |
+| `/profile` | Wallet overview — balances, staking, chart |
 
 **On-chain state (devnet):**
 - Sale Vault: ~28 SOL
@@ -114,7 +137,7 @@ Devnet     Registry
 ### Prerequisites
 
 - Node.js 18+
-- Phantom wallet (set to Solana Devnet)
+- Phantom wallet set to **Solana Devnet**
 
 ### Installation
 
@@ -150,7 +173,7 @@ Open [http://localhost:3000](http://localhost:3000)
 |--------|-------------|
 | `npx tsx scripts/airdrop-vend.ts <ADDRESS>` | Airdrop VEND to wallet |
 | `npx tsx scripts/fund-rewards.ts` | Fund staking reward vault |
-| `npx tsx scripts/emit-rewards.ts` | Distribute rewards to stakers (ONLINE machines only) |
+| `npx tsx scripts/emit-rewards.ts` | Distribute rewards (ONLINE machines only) |
 | `npx tsx scripts/reinit-staking-pool.ts` | Re-initialize staking pool |
 | `npx tsx scripts/update-vend-metadata.ts` | Update token metadata on-chain |
 
@@ -181,5 +204,6 @@ Open [http://localhost:3000](http://localhost:3000)
 
 Built for **Decentrathon 2026 — Solana National Hackathon**
 
-- Telegram: [@KakaCoder](https://t.me/KakaCoder)
+- Telegram: [@Sweetbbf](https://t.me/Sweetbbf)
 - GitHub: [KakaCoder123](https://github.com/KakaCoder123)
+- Demo: [vendchain.vercel.app](https://vendchain.vercel.app/)
